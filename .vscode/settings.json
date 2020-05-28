@@ -1,0 +1,19 @@
+{
+    "rest-client.environmentVariables": {
+        "$shared": {
+        },
+        "local": {
+            "host": "http://192.168.31.254:5678"
+        },
+        "testing": {
+            "host": "http://testing.dayouqifu.com"
+        },
+        "prod": {
+            "host": "http://www.dayouqifu.com"
+        }
+    },
+    "rest-client.defaultHeaders": {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+}

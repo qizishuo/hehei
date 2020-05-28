@@ -1,0 +1,29 @@
+### 提交起名订单
+POST {{host}}/qiming/orders
+
+{
+    "surname": "张",
+    "gender": 1,
+    "birthday": 1577980679,
+    "type": 1
+}
+
+
+### 获取起名结果
+GET {{host}}/qiming/orders/d2c63935559ec
+
+
+### 修改订单状态
+PUT {{host}}/qiming/orders/e7a5da9237d5f
+
+{
+    "status": 2
+}
+
+
+### 获取订单状态
+GET {{host}}/qiming/order_status/e880707dc3f2d
+
+
+### 用户重新支付订单
+GET {{host}}/qiming/repay/58d8e4afc5615
