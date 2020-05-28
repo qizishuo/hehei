@@ -1,0 +1,48 @@
+### 提交核名信息
+POST {{host}}/api/infos
+
+{
+    "type": 1,
+    "source": "sadfasdf",
+    "location": "110000",
+    "phone": "12000000012",
+    "company_name": "这次v阿斯顿"
+}
+
+
+### 提交起名信息
+POST {{host}}/api/infos
+
+{
+    "type": 2,
+    "source": "test",
+    "location": "110000",
+    "phone": "13323412342",
+    "industry": "测试",
+    "boss_name": "张三",
+    "boss_birth": "1990"
+}
+
+
+### 获取短信验证码
+POST {{host}}/api/captcha
+
+{
+    "phone": 18603322067
+}
+
+
+### 获取热度词
+GET {{host}}/api/hot-words
+
+
+### 获取核名动态
+GET {{host}}/api/check-names
+
+
+### 获取弹窗动态
+GET {{host}}/api/popups
+
+
+### 测试模版消息
+POST {{host}}/api/wechat/send
