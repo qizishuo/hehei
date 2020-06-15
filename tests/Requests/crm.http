@@ -1,0 +1,8 @@
+### 总后台登陆
+POST {{host}}/api/admin/session
+Authorization: Basic admin:Dayouqifu888
+
+
+### 总后台登出
+DELETE {{host}}/api/admin/session
+Authorization: Bearer 2b44326cb8c8881a1b461533b8674618
