@@ -15,7 +15,7 @@ class LoginController extends Controller
 
         $auth = $request->header("Authorization");
         if(empty($auth)){
-            abort(400, "缺失必要参数：Authorization");
+            abort(401, "缺失必要参数：Authorization");
         }
         [$username, $password] = $this->parseAuth($auth);
 

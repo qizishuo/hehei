@@ -87,7 +87,7 @@ class RouteServiceProvider extends ServiceProvider
 
     protected function mapCrmRoutes()
     {
-        Route::prefix('api')
+        Route::prefix('crm')
              ->middleware('api')
              ->namespace($this->namespace . "\Crm")
              ->group(base_path('routes/crm.php'));

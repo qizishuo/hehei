@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Crm\Admin;
 
 use App\Entities\ClientFollowUp;
 use App\Entities\ClientFollowUpLog;
+use App\Entities\ClientFollowUpComment;
 use App\Entities\Stage;
 use App\Http\Controllers\Controller;
 use App\Entities\Client;
@@ -16,15 +17,27 @@ use App\Entities\RatingLabel;
 class ClientController extends  Controller
 {
     protected $model = Client::class;
-    //列表
+
+
+    /**列表
+     * @param Request $request
+     * @return false|string
+     */
     public function list(Request $request){
 
-        $where = [];
-
-        $request->get('initials') ?? $where['initials'] = $request->get('initials');
-
         $page_size = $request->get('page_size', 10);
-        $data = $this->model::where($where)->paginate($page_size);
+        $data = $this->model::where(function($query) use($request){
+            $data = $request->get();
+            if($data['initials']){
+                $query->where('initials',$data['initials']);
+            }
+            if($data['start_time']){
+                $query->whereDate('create_at','>=',$data['start_time']);
+            }
+            if($data['end_time']){
+                $query->whereDate('create_at','<',$data['end_time']);
+            }
+        })->paginate($page_size);
         $data->appends(['page_size' => $page_size]);
 
         return $this->jsonSuccessData([
@@ -196,18 +209,25 @@ class ClientController extends  Controller
         return null;
     }
 
+    /** 客户详情
+     * @param Request $request
+     * @return false|string
+     */
     public function detail(Request $request){
         $id = $request->get('id');
         $detail = $this->model::findOrFail($id);
 
-        $log = ClientFollowUp::where('client_id' ,$id)->get();
+        $log = ClientFollowUp::where('client_id' ,$id)->select();
         return $this->jsonSuccessData([
             'detail' => $detail,
             'log'    => $log
         ]);
     }
 
-
+    /**客户跟进
+     * @param Request $request
+     * @return false|string
+     */
     public function followUp(Request $request){
         $user = $request->get('user');
         $rabit =  RatingLabel::orderBy('id', 'asc')->get()->toArray();
@@ -240,6 +260,10 @@ class ClientController extends  Controller
         return $this->jsonSuccessData();
     }
 
+    /**客户成交
+     * @param Request $request
+     * @return false|string
+     */
     public function deal(Request $request){
         $user = $request->get('user');
         $data = $request->validate([
@@ -259,4 +283,21 @@ class ClientController extends  Controller
         ]);
         return $this->jsonSuccessData();
     }
+
+    public function comment(Request $request){
+        $user = $request->get('user');
+        $data = $request->validate([
+            'id'                  => "required",
+            'commentator_content' => "required",
+        ]);
+
+        $data = [
+            'follow_up_log_id' => $data['id'],
+            'commentator_type' => ClientFollowUpComment::TYPE_ADMIN,
+            'commentator_id'   => $user->id
+        ];
+
+        return $this->jsonSuccessData();
+    }
+
 }
