@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 Route::prefix("admin")->group(function () {
-    Route::get("list", "Admin\\ServiceController@regionData");
+    Route::get("report", "Admin\\ReportController@saleDate");
 
     Route::post("/login", "Admin\\LoginController@login");
     Route::middleware('web.auth')->group(function() {

@@ -4,6 +4,8 @@
 namespace App\Entities;
 
 
+use Illuminate\Support\Facades\Hash;
+
 class Sale extends Model
 {
     protected $appends = [
@@ -14,6 +16,13 @@ class Sale extends Model
     public function service()
     {
         return $this->hasOne(Service::class,'id','service_id');
+    }
+    public function setPasswordAttribute($value)
+    {
+        if (empty($value)) {
+            return false;
+        }
+        $this->attributes["password"] = Hash::make($value);
     }
     public function client(){
         return $this->hasMany(Client::class,'sale_id','id');

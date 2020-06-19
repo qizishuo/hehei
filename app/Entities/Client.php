@@ -8,9 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Entities\ClientFollowUp;
 class Client extends Model
 {
-    protected $appends = [
-        'money'
-    ];
+
     /**
      * 关联销售
      */
@@ -30,20 +28,10 @@ class Client extends Model
         return $this->hasMany(ClientFollowUp::class,'client_id','id');
     }
     public function money(){
-        return $this->hasMany(ClientClosing::class,'client_id','id');
+        return $this->hasOne(ClientClosing::class,'client_id','id');
     }
-    public function getMoneyAttribute(): string
-    {
-        return $this->money()->sum("closing_price");
-    }
-    /**
-     * @param $val
-     * @return string
-     */
-    public function getLocationAttribute($val): string
-    {
-        return location_name($val);
-    }
+
+
 
 
 }

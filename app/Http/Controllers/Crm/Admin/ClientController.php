@@ -37,6 +37,9 @@ class ClientController extends  Controller
             if($data['end_time']){
                 $query->whereDate('create_at','<',$data['end_time']);
             }
+            if($data['sale_id']){
+                $query->where('sale_id',$data['sale_id']);
+            }
         })->paginate($page_size);
         $data->appends(['page_size' => $page_size]);
 

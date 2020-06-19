@@ -34,7 +34,7 @@ class ServiceController extends Controller
         $region = Region::findOrFail($region_id);
         $list = $this->model::withCount(['client as now_client' => function ($query) {
             $query->where("is_deal", 0);
-        }])->where('location',$region['location'])->paginate();
+        }])->where('region_id',$region['id'])->paginate();
 
         return $this->jsonSuccessData([
             'data' => $list,
@@ -52,7 +52,7 @@ class ServiceController extends Controller
             $query->where("is_deal", 0);
         },'client as clos' => function($query){
             $query->where("is_deal", 1);
-        }])->WithCount(['client'])->where('location',$region['location'])->get()->toArray();
+        }])->WithCount(['client'])->where('region_id',$region['id'])->get()->toArray();
 
         return $this->jsonSuccessData([
             "sum" => array_sum(array_column($list, 'money')),
@@ -71,7 +71,7 @@ class ServiceController extends Controller
         $location_data = \cn\GB2260::getData();
         $data = $request->validate([
             "company_name" => "required",
-            "location"     => ["required", Rule::in(array_keys($location_data))],
+            "region_id"     => "required",
             "address"      => "required",
             "name"     => "required",
             "account"     => "required",
@@ -82,7 +82,7 @@ class ServiceController extends Controller
             "gender"       => [Rule::in([Client::MALE_CODE,Client::FEMALE_CODE,Client::GENDER_NO])],
         ],[
             "company_name.required" => "公司名称不能为空",
-            "location.required"     => "请选择地址",
+            "region_id.required"     => "请选择地址",
             "address.required"      => "请填写详细地址",
             "name.required"     => "请填写姓名",
             "account.required"        => "请填写账号",
@@ -94,7 +94,7 @@ class ServiceController extends Controller
 
         $this->model::create([
             "company_name" => $data["company_name"],
-            "location"     => $data["location"],
+            "region_id"    => $data["region_id"],
             "address"      => $data["address"],
             "name"         => $data["name"],
             "account"      => $data["account"],
