@@ -16,6 +16,21 @@ class RatingLabel extends Model
         return $this->hasMany(RatingLabel::class,'pid','id')->orderBy('id','asc');
     }
 
+    public function getType(): string
+    {
+        $types = RatingLabel::getTypes();
+        return $types[$this->type] ?? "未知";
+    }
 
+    public static function getTypes(): array
+    {
+        return [
+            RatingLabel::LABLE_A => "A类",
+            RatingLabel::LABLE_B => "B类",
+            RatingLabel::LABLE_C => "C类",
+            RatingLabel::LABLE_D => "D类",
+            RatingLabel::LABLE_E => "E类",
+        ];
+    }
 
 }
