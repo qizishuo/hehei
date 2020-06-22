@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 Route::prefix("admin")->group(function () {
-    Route::get("report", "Admin\\ReportController@saleDate");
+    Route::get("report", "Admin\\ReportController@followUp");
 
     Route::post("/login", "Admin\\LoginController@login");
     Route::middleware('web.auth')->group(function() {
@@ -30,6 +30,9 @@ Route::prefix("admin")->group(function () {
 
         });
 
+        Route::prefix("service")->name("service.")->group(function(){
+            Route::get('/region','Admin\\ServiceController@region');
+        });
     });
 
 });

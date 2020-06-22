@@ -23,9 +23,7 @@ class ClientFollowUp extends Model
         'sale_id',
         'old_sale_id',
     ];
-    protected $appends = [
-        'money'
-    ];
+
     public function setFOLLOWTYPEAttribute($value)
     {
         switch ($value){
@@ -46,10 +44,7 @@ class ClientFollowUp extends Model
     public function money(){
         return $this->hasMany(ClientClosing::class,'follow_up_id','id');
     }
-    public function getMoneyAttribute(): string
-    {
-        return $this->money()->sum("closing_price");
-    }
+
     /**
      * 关联详情
      */

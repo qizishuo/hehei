@@ -18,7 +18,13 @@ class ServiceController extends Controller
      */
     public function region(Request $request){
         $list = Region::select();
-
+        $list_origin = Region::select("province","location")
+            ->groupBy("province")->get();
+        $list = [];
+        foreach ($list_origin as $item){
+            $list[$item['province']][]['id'] = $item['id'];
+            $list[$item['province']][]['location'] = $item['location'];
+        }
         return $this->jsonSuccessData([
             'data' => $list
         ]);

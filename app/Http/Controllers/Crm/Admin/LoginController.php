@@ -27,7 +27,6 @@ class LoginController extends Controller
 
         $token_service = new TokenService("admin");
         $token = $token_service->write($user->id);
-
         return $this->jsonSuccessData(['token' => $token]);
     }
 

@@ -9,23 +9,15 @@ use App\Entities\ClientClosing;
 use App\Entities\RatingLabel;
 use App\Entities\Region;
 use App\Entities\Sale;
+use App\Entities\ClientFollowUp;
 use App\Entities\Service;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 class ReportController extends Controller
 {
-    /**->where(function ($query) use ($region_id,$region,$servoce_id,$sale_id){
-    if($region_id){
-    $query->whereIN('service_id',$region);
-    }
-    if($servoce_id){
-    $query->where('service_id',$servoce_id);
-    }
-    if($sale_id){
-    $query->where('sale_id',$sale_id);
-    }
-    })
+    /**
      * @param Request $request
      * @return false|string
      */
@@ -46,27 +38,77 @@ class ReportController extends Controller
             $where['sale_id'] = $sale_id;
         }
 
+        $dt = Carbon::now();
 
-        for ($i=1;$i<=12;$i++){
-            $result = ClientClosing::whereMonth('created_at',$i)->where($where)->where(function ($query) use ($region_id,$region){
-                if($region_id){
-                    $query->whereIn('service_id',$region);
-                }
-            })->get()->toArray();
-
-            $data[$i]['money'] = @array_sum(array_column($result,'closing_price'));
-            $data[$i]['sum']   = count($result);
-            if($i=1){
-                $data[$i]['h']=0;
-                $data[$i]['t']=0;
-            }else{
-                $data[$i]['h']= ($data[$i]['money']-$data[$i-1]['money'])/$data[$i-1]['money']*100;
-                $data[$i]['t']=0;
+        $data_raw = DB::raw('DATE_FORMAT(created_at,"%m") as date');
+        $count_raw = DB::raw('COUNT(id) as count');
+        $money_raw = DB::raw("SUM(closing_price) as money");
+        // 今年数据统计
+        $data = ClientClosing::select($money_raw,$data_raw,$count_raw)->whereYear('created_at',$dt->year)->where($where)->where(function ($query) use ($region_id,$region){
+            if($region_id){
+                $query->whereIn('service_id',$region);
             }
+        })->groupBy("date")->get()->toArray();
 
+        //去年数据统计
+        $last_data = ClientClosing::select($money_raw,$data_raw,$count_raw)->whereYear('created_at',($dt->year)-1)->where($where)->where(function ($query) use ($region_id,$region){
+            if($region_id){
+                $query->whereIn('service_id',$region);
+            }
+        })->groupBy("date")->get()->toArray();
+
+        $data_list = [];
+        foreach($data as $item){
+            $data_list[$item['date']]['money'] = $item['money'];
+            $data_list[$item['date']]['count'] = $item['count'];
         }
+
+        $last_data_list = [];
+        foreach($last_data as $item){
+            $last_data_list[$item['date']]['money'] = $item['money'];
+        }
+
+        $list = [];
+        //计算同比增长与环比增长
+        for($i=1;$i<13;$i++){
+
+            $month = $i<10?'0'.$i:$i;
+
+            $last_month = ($i-1)<10?'0'.($i-1):($i-1);
+
+            if(isset($data_list[$month])){
+                $list[$month]['link_ratio'] = 0;
+                $list[$month]['year_on_year'] = 0;
+                $list[$month]['avg'] = $data_list[$month]['money']/$data_list[$month]['count'];
+                $list[$month]['money'] = $data_list[$month]['money'];
+                $list[$month]['count'] = $data_list[$month]['count'];
+                /**环比增长 */
+                if($i != 1){
+                    if(isset($data_list[$last_month]) && $data_list[$last_month]['money'] > 0){
+                        @$list[$month]['link_ratio'] = ($data_list[$month]['money']-$data_list[$last_month]['money'])/$data_list[$last_month]['money']*100;
+                    }
+                }else{
+                    if(isset($last_data_list["12"]) && $last_data_list["12"]['money'] > 0){
+                        @$list[$month]['link_ratio'] = ($data_list[$month]['money']-$last_data_list["12"]['money'])/$last_data_list["12"]['money']*100;
+                    }
+                }
+                /**同比增长 */
+                if(isset($last_data_list[$month]) && $last_data_list[$month]['money'] > 0){
+                    @$list[$month]['year_on_year'] = ($data_list[$month]['money']-$last_data_list[$month]['money'])/$last_data_list[$month]['money']*100;
+                }
+            }else{
+                $list[$month]['link_ratio'] = 0;
+                $list[$month]['year_on_year'] = 0;
+                $list[$month]['avg'] = 0;
+                $list[$month]['money'] = 0;
+                $list[$month]['count'] = 0;
+
+            }
+        }
+
+
         return $this->jsonSuccessData([
-            'data' => $data
+            'data' => $list
         ]);
     }
 
@@ -77,6 +119,9 @@ class ReportController extends Controller
         $region_id  = $request->get('region_id');
         $service_id = $request->get('service_id');
         $sale_id    = $request->get('sale_id');
+
+        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subWeekday()->toDateString();
+        $range_end = $request->get("range_end") ? $request->get("range_end") : Carbon::today()->toDateString();
 
         $where = [];$region = [];
         if($region_id){
@@ -89,8 +134,7 @@ class ReportController extends Controller
             $where['sale_id'] = $sale_id;
         }
 
-        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subWeekday()->toDateString();
-        $range_end = $request->get("range_end") ? $request->get("range_end") : Carbon::today()->toDateString();
+        //新增客户数量
         $date_raw = DB::raw('DATE(created_at) as date');
         $origin_data = Client::select($date_raw)
             ->where($where)
@@ -101,6 +145,11 @@ class ReportController extends Controller
         foreach ($origin_data as $item) {
             $dict_data[$item["date"]] = $item["count"];
         }
+
+        //客户新增报表
+        $list = Service::withCount('client as client_num')->withCount(['client as new_client' => function ($query,$range_start,$range_end) {
+            $query->whereDate("created_at", ">=", $range_start)->whereDate("created_at", "<=", $range_end);
+        }])->get();
     }
 
     /**客户跟进
@@ -143,6 +192,16 @@ class ReportController extends Controller
                 $dict_data['sign'][$item["date"]] = $item["count"];
             }
         }
+        //客户新增报表
+        $list = Service::withCount(['client','followlog'])->get()->toArray();
+//
+//        $list = Service::withCount(['followlog as follow_num' => function ($query,$range_start,$range_end) {
+//            $query->where("follow_type", ClientFollowUp::FOLLOW_TYPE_UP)->whereDate("created_at", ">=", $range_start)->whereDate("created_at", "<=", $range_end);
+//        }])->withCount(['followlog as sign' => function ($query,$range_start,$range_end) {
+//            $query->where("follow_type", ClientFollowUp::FOLLOW_TYPE_SIGN)->whereDate("created_at", ">=", $range_start)->whereDate("created_at", "<=", $range_end);
+//        }])->get()->toArray();
+        dd($list);
+
     }
 
     /**质量占比
