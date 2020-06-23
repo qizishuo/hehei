@@ -192,15 +192,14 @@ class ReportController extends Controller
                 $dict_data['sign'][$item["date"]] = $item["count"];
             }
         }
-        //客户新增报表
-        $list = Service::withCount(['client','followlog'])->get()->toArray();
-//
-//        $list = Service::withCount(['followlog as follow_num' => function ($query,$range_start,$range_end) {
-//            $query->where("follow_type", ClientFollowUp::FOLLOW_TYPE_UP)->whereDate("created_at", ">=", $range_start)->whereDate("created_at", "<=", $range_end);
-//        }])->withCount(['followlog as sign' => function ($query,$range_start,$range_end) {
-//            $query->where("follow_type", ClientFollowUp::FOLLOW_TYPE_SIGN)->whereDate("created_at", ">=", $range_start)->whereDate("created_at", "<=", $range_end);
-//        }])->get()->toArray();
-        dd($list);
+        //客户新增报表+
+        $this->relationSearch = true;
+        $list = Service::withCount(['followlog as follow_num' => function ($query) use($range_start,$range_end) {
+            $query->where("follow_type", ClientFollowUp::FOLLOW_TYPE_UP)->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);
+        }])->withCount(['followlog as sign' => function ($query) use($range_start,$range_end) {
+            $query->where("follow_type", ClientFollowUp::FOLLOW_TYPE_SIGN)->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);;
+        }])->withCount('client')->get()->toArray();
+
 
     }
 

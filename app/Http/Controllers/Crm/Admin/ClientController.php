@@ -92,10 +92,11 @@ class ClientController extends  Controller
     public function changeRadio(Request $request){
         $data = $request->validate([
              "ids"             => "required",
-             "rating_lable_id" => "required"
         ]);
 
-        $this->model::whereIn('id',$data['ids'])->update(['rating_lable_id' => $data['rating_lable_id']]);
+        $e = RatingLabel::where('level',"E")->find();
+
+        $this->model::whereIn('id',$data['ids'])->update(['rating_lable_id' => $e->id]);
 
         return $this->jsonSuccessData();
     }

@@ -23,10 +23,9 @@ class LoginController extends Controller
         if (empty($user) || !$user->verifyPassword($password)) {
             abort(401, "登陆失败，用户名密码错误");
         }
-
-
         $token_service = new TokenService("admin");
         $token = $token_service->write($user->id);
+
         return $this->jsonSuccessData(['token' => $token]);
     }
 

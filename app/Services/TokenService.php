@@ -19,7 +19,10 @@ class TokenService
     {
         $token = $this->generate();
         $key = "token:{$this->type}:{$token}";
+
         Redis::setex($key, $this->expire, json_encode($data));
+
+
         return $token;
     }
 

@@ -68,7 +68,7 @@ class SettingController extends Controller
                     'info' => $v
                 ];
             }
-            RatingLabel::saved($rating_data);
+            RatingLabel::saved($rating);
         }
 
         //要添加的数据
@@ -76,7 +76,6 @@ class SettingController extends Controller
         if($rating_add){
             RatingLabel::insert($rating_add);
         }
-
 
         //要删除的数据
         $rating_delete = $request->post('rating_delete');

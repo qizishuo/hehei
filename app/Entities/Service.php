@@ -4,12 +4,15 @@
 namespace App\Entities;
 
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Hash;
 
 class Service extends Model
 {
 
     protected $fillable = ['company_name', 'location','address','name','account','password','phone','gender','scale_num','cost_price'];
+
+
 
     public function sale()
     {
@@ -34,7 +37,7 @@ class Service extends Model
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function followlog(){
-        return $this->hasManyThrough(ClientFollowUp::class,Client::class,'id','client_id');
+        return $this->hasManyThrough(ClientFollowUp::class,Client::class,'service_id','client_id','id','id');
     }
     public function money(){
         return $this->hasMany(ClientClosing::class,'service_id','id');

@@ -34,7 +34,7 @@ class Model extends BaseModel
         parent::boot();
 
         static::addGlobalScope('order', function (Builder $builder) {
-            $builder->orderByDesc("updated_at")->orderByDesc("id");
+            $builder->orderByDesc((new static)->getTable().".updated_at")->orderByDesc((new static)->getTable().".id");
         });
     }
 }
