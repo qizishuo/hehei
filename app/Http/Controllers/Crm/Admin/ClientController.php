@@ -96,8 +96,8 @@ class ClientController extends  Controller
 
         $e = RatingLabel::where('level',"E")->find();
 
-        $this->model::whereIn('id',$data['ids'])->update(['rating_lable_id' => $e->id]);
-
+        $info = $this->model::whereIn('id',$data['ids'])->update(['rating_lable_id' => $e->id]);
+        $info->addRable($request->get('lable_ids'));
         return $this->jsonSuccessData();
     }
 
@@ -234,7 +234,7 @@ class ClientController extends  Controller
      */
     public function followUp(Request $request){
         $user = $request->get('user');
-        $rabit =  RatingLabel::orderBy('id', 'asc')->get()->toArray();
+        $rabit =  RatingLabel::where('pid',0)->get()->toArray();
         $stage = Stage::orderBy('id', 'asc')->get()->toArray();
 
         $location_data = \cn\GB2260::getData();
@@ -252,15 +252,13 @@ class ClientController extends  Controller
             'exchange_plan'   => "required",
         ]);
 
-        $id = ClientFollowUp::insertGetId([
+        $info = ClientFollowUp::create([
             'follow_type' => ClientFollowUp::FOLLOW_TYPE_UP,
             'client_id'   => $data['client_id'],
             'sale_id'     => $user['id'],
         ]);
-        $data['follow_up_id'] = $id;
-        ClientFollowUpLog::create([
-            $data
-        ]);
+        $info->addLog($data);
+        $info->addRable($request->get('lable_ids'));
         return $this->jsonSuccessData();
     }
 

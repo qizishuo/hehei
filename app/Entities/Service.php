@@ -16,14 +16,7 @@ class Service extends Model
 
     public function sale()
     {
-        return $this->hasMany(Sale::class);
-    }
-    public function setPasswordAttribute($value)
-    {
-        if (empty($value)) {
-            return false;
-        }
-        $this->attributes["password"] = Hash::make($value);
+        return $this->hasMany(Sale::class,'service_id','id');
     }
 
     /**关联用户表
@@ -46,5 +39,15 @@ class Service extends Model
     {
         return $this->money()->sum("closing_price");
     }
+
+
+    public function setPasswordAttribute($value)
+    {
+        if (empty($value)) {
+            return false;
+        }
+        $this->attributes["password"] = Hash::make($value);
+    }
+
 
 }

@@ -11,10 +11,13 @@ use App\Entities\Region;
 use App\Entities\Sale;
 use App\Entities\ClientFollowUp;
 use App\Entities\Service;
+use App\Entities\Stage;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use function foo\func;
+
 class ReportController extends Controller
 {
     /**
@@ -174,7 +177,7 @@ class ReportController extends Controller
             $where['sale_id'] = $sale_id;
         }
 
-        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subWeekday()->toDateString();
+        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subDays(7)->toDateString();
         $range_end = $request->get("range_end") ? $request->get("range_end") : Carbon::today()->toDateString();
         $date_raw = DB::raw('DATE(created_at) as date');
         $origin_data = ClientFollowUp::select($date_raw)
@@ -198,8 +201,10 @@ class ReportController extends Controller
             $query->where("follow_type", ClientFollowUp::FOLLOW_TYPE_UP)->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);
         }])->withCount(['followlog as sign' => function ($query) use($range_start,$range_end) {
             $query->where("follow_type", ClientFollowUp::FOLLOW_TYPE_SIGN)->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);;
-        }])->withCount('client')->get()->toArray();
-
+        }])->withCount('client')->withCount(['money as money_sum' => function ($query) use($range_start,$range_end){
+            $query->whereDate("client_closings.created_at", ">=", $range_start)->whereDate("client_closings.created_at", "<=", $range_end)->select(DB::raw("sum(closing_price) as moneysum"));
+        }])->get()->toArray();
+        dd($list);
 
     }
 
@@ -223,7 +228,7 @@ class ReportController extends Controller
             $where['sale_id'] = $sale_id;
         }
 
-        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subWeekday()->toDateString();
+        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subDays(7)->toDateString();
         $range_end = $request->get("range_end") ? $request->get("range_end") : Carbon::today()->toDateString();
         $origin_data = ClientFollowUp::where($where)
             ->whereDate("created_at", ">=", $range_start)
@@ -238,6 +243,45 @@ class ReportController extends Controller
 
     }
 
+
+
+    /**投资回报率
+     * @param Request $request
+     */
+    public function RateReturn(Request $request){
+        $region_id  = $request->get('region_id');
+        $service_id = $request->get('service_id');
+        $sale_id    = $request->get('sale_id');
+
+        $where = [];
+        $region = [];
+        if($region_id){
+            $region = Service::where('region_id',$region_id)->get(['id'])->toArray();
+        }
+        if($service_id){
+            $where['service_id'] = $service_id;
+        }
+        if($sale_id){
+            $where['sale_id'] = $sale_id;
+        }
+
+        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subDays(200)->toDateString();
+        $range_end = $request->get("range_end") ? $request->get("range_end") : Carbon::today()->toDateString();
+        $origin_data = Service::withCount(['money as money_sum' => function ($query) use($range_start,$range_end){
+                $query->whereDate("client_closings.created_at", ">=", $range_start)->whereDate("client_closings.created_at", "<=", $range_end)->select(DB::raw("sum(closing_price) as moneysum"));
+            }])
+            ->where($where)
+            ->withCount(['sale','client as client_count'])
+            ->whereDate("created_at", ">=", $range_start)
+            ->whereDate("created_at", "<=", $range_end)
+            ->get()->toArray();
+
+        foreach ($origin_data as $k => &$v){
+            $v['cost'] = $v['client_count'] * $v['cost_price'];
+            $v['cost'] ? $v['rate_return'] = ($v['money_sum']-$v['cost'])/$v['cost']*100 : 0;
+
+        }
+    }
     /**类型成交转换
      * @param Request $request
      */
@@ -245,7 +289,7 @@ class ReportController extends Controller
         $region_id  = $request->get('region_id');
         $service_id = $request->get('service_id');
         $sale_id    = $request->get('sale_id');
-        $rating_label_id   = $request->get('rating_label_id') ??RatingLabel::LABLE_A;
+        $rating_label_id   = $request->get('rating_label_id');
         $where = [];
         $region = [];
         if($region_id){
@@ -260,23 +304,64 @@ class ReportController extends Controller
         if($rating_label_id){
             $where['rating_label_id'] = $rating_label_id;
         }
-        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subWeekday()->toDateString();
+        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subDays(7)->toDateString();
         $range_end = $request->get("range_end") ? $request->get("range_end") : Carbon::today()->toDateString();
         $count = Client::where($where)
             ->whereDate("created_at", ">=", $range_start)
             ->whereDate("created_at", "<=", $range_end)
-            ->get()->toArray();
-        $qiandan = 0;
-        foreach ($count as $item){
-            if($item['is_deal'] == 1){
-                $qiandan +=1;
-            }
-        }
+            ->count();
+        $deal_count = Client::where($where)
+            ->where('is_deal',1)
+            ->whereDate("created_at", ">=", $range_start)
+            ->whereDate("created_at", "<=", $range_end)
+            ->count();
+
+        //销售
+        $list = Sale::with('service')
+                ->withCount(['client as count' => function($query) use($range_start,$range_end){
+                    $query->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);
+                },'client as deal_count'=> function($query) use($range_start,$range_end){
+                    $query->where('is_deal',1)->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);
+                }])->get();
 
     }
 
-    /**
-     *
+    /**沟通频次
+     * @param Request $request
+     */
+    public function connect(Request $request){
+        $region_id  = $request->get('region_id');
+        $service_id = $request->get('service_id');
+        $sale_id    = $request->get('sale_id');
+        $rating_lable_id   = $request->get('rating_lable_id');
+        $where = [];
+        $region = [];
+        if($region_id){
+            $region = Service::where('region_id',$region_id)->get(['id'])->toArray();
+        }
+        if($service_id){
+            $where['service_id'] = $service_id;
+        }
+        if($sale_id){
+            $where['sale_id'] = $sale_id;
+        }
+
+
+        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subDays(7)->toDateString();
+        $range_end = $request->get("range_end") ? $request->get("range_end") : Carbon::today()->toDateString();
+
+        $list = Sale::withCount(['followlog as follow_num' => function ($query) use($range_start,$range_end,$rating_lable_id) {
+            $query->where("follow_type", ClientFollowUp::FOLLOW_TYPE_UP)->where('clients.rating_lable_id',$rating_lable_id)->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);
+        }])->withCount(['followlog as sign' => function ($query) use($range_start,$range_end,$rating_lable_id) {
+            $query->where("follow_type", ClientFollowUp::FOLLOW_TYPE_SIGN)->where('clients.rating_lable_id',$rating_lable_id)->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);;
+        }])->withCount('client')->withCount(['money as money_sum' => function ($query) use($range_start,$range_end){
+            $query->whereDate("client_closings.created_at", ">=", $range_start)->whereDate("client_closings.created_at", "<=", $range_end)->select(DB::raw("sum(closing_price) as moneysum"));
+        }])->get()->toArray();
+
+    }
+
+    /**客户阶段分布
+     * @param Request $request
      */
     public function  stage(Request $request){
         $region_id  = $request->get('region_id');
@@ -295,9 +380,10 @@ class ReportController extends Controller
             $where['sale_id'] = $sale_id;
         }
 
-        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subWeekday()->toDateString();
+        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subDays(7)->toDateString();
         $range_end = $request->get("range_end") ? $request->get("range_end") : Carbon::today()->toDateString();
-        $origin_data = ClientFollowUp::where($where)
+        $origin_data = ClientFollowUp::
+           where($where)
             ->whereDate("created_at", ">=", $range_start)
             ->whereDate("created_at", "<=", $range_end)
             ->get();
@@ -306,5 +392,30 @@ class ReportController extends Controller
         foreach ($origin_data as $item) {
             $new_data[$item['stage_id']] += $item;
         }
+        $stage = Stage::select('id')->orderBy('id', 'asc')->get()->toArray();
+        $list = Sale::withCount(['client as one' => function ($query) use($range_start,$range_end,$stage) {
+            $query->where("stage_id", $stage[0]['id'])->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);
+        }])->withCount(['client as two' => function ($query) use($range_start,$range_end,$stage) {
+            $query->where("stage_id", $stage[1]['id'])->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);;
+        }])->withCount(['client as three' => function ($query) use($range_start,$range_end,$stage) {
+            $query->where("stage_id", $stage[2]['id'])->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);;
+        }])->withCount(['client as four' => function ($query) use($range_start,$range_end,$stage) {
+            $query->where("stage_id", $stage[3]['id'])->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);;
+        }])->get()->toArray();
+    }
+
+    public function data(Request $request){
+        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subDays(7)->toDateString();
+        $range_end = $request->get("range_end") ? $request->get("range_end") : Carbon::today()->toDateString();
+        $rating_lable_id   = $request->get('rating_lable_id');
+        Service::withCount('client')->withCount(['money as money_sum' => function ($query) use($range_start,$range_end){
+            $query->whereDate("client_closings.created_at", ">=", $range_start)->whereDate("client_closings.created_at", "<=", $range_end)->select(DB::raw("sum(closing_price) as moneysum"));
+        }])->withCount(['followlog as sign' => function ($query) use($range_start,$range_end){
+            $query->where("follow_type", ClientFollowUp::FOLLOW_TYPE_SIGN)->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);;
+        }])->withCount(['followlog as follow_up' => function ($query) use($range_start,$range_end){
+            $query->where("follow_type", ClientFollowUp::FOLLOW_TYPE_UP)->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);;
+        }])->withCount(['clinet' => function ($query) use($range_start,$range_end,$rating_lable_id) {
+            $query->where("rating_lable_id", $rating_lable_id)->whereDate("clinets.created_at", ">=", $range_start)->whereDate("clinets.created_at", "<=", $range_end);;
+        }]);
     }
 }

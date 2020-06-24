@@ -9,7 +9,7 @@ class ClientFollowUpLog extends Model
     public const EXCHANGE_TYPE_PHONE = 1;
     public const EXCHANGE_TYPE_VISIT = 2;
 
-    protected $with = ["log"];
+    protected $with = ["log","Rable"];
 
     protected $fillable = [
         'follow_up_id',
@@ -25,8 +25,10 @@ class ClientFollowUpLog extends Model
         'exchange_plan',
     ];
     public function log(){
-        return $this->hasMany(ClientFollowUpComment::class,'id','follow_up_log_id');
+        return $this->hasMany(ClientFollowUpComment::class,'follow_up_log_id','id');
     }
+
+
 
 
 }

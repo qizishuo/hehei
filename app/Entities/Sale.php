@@ -8,9 +8,7 @@ use Illuminate\Support\Facades\Hash;
 
 class Sale extends Model
 {
-    protected $appends = [
-        'money'
-    ];
+
     protected $fillable = ['name','account','password','scale_num'];
 
     public function service()
@@ -27,6 +25,13 @@ class Sale extends Model
     public function client(){
         return $this->hasMany(Client::class,'sale_id','id');
     }
+    /**关联用户下的跟进记录表
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function followlog(){
+        return $this->hasManyThrough(ClientFollowUp::class,Client::class,'sale_id','client_id','id','id');
+    }
+
     public function money(){
         return $this->hasMany(ClientClosing::class,'sale_id','id');
     }

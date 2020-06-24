@@ -4,8 +4,8 @@
 namespace App\Entities;
 
 
-use phpDocumentor\Reflection\Types\Self_;
 use App\Entities\ClientFollowUpLog;
+use phpDocumentor\Reflection\Types\Self_;
 class ClientFollowUp extends Model
 {
     public const FOLLOW_TYPE_UP       = 1;
@@ -50,5 +50,28 @@ class ClientFollowUp extends Model
      */
     public function log(){
         return $this->hasMany(ClientFollowUpLog::class,'id','follow_up_id');
+    }
+
+    public function rable(){
+        return $this->hasMany(ClientLogRable::class,'follow_up_id','id');
+    }
+
+    public function addRable(array $rable){
+        $id = $this->id;
+        foreach ($rable as $item){
+            ClientLogRable::create([
+                'log_id' => $id,
+                'rating_lable_id' => $item
+            ]);
+        }
+
+    }
+
+    public function addLog(array $data){
+        $data['follow_up_id'] = $this->id;
+
+        ClientFollowUpLog::create([
+            $data
+        ]);
     }
 }
