@@ -39,5 +39,7 @@ class Sale extends Model
     {
         return $this->money()->sum("closing_price");
     }
-
+    public function lable(){
+        return $this->hasManyThrough(FollowUpLable::class,ClientFollowUpLog::class,'sale_id','follow_up','id','id');
+    }
 }

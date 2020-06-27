@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Crm\Admin;
 
 use App\Entities\Client;
 use App\Entities\ClientClosing;
+use App\Entities\ClientFollowUpLog;
 use App\Entities\RatingLabel;
 use App\Entities\Region;
 use App\Entities\Sale;
@@ -360,6 +361,72 @@ class ReportController extends Controller
 
     }
 
+    /**等级变化
+     * @param Request $request
+     */
+    public function changeLevel(Request $request){
+        $region_id  = $request->get('region_id');
+        $service_id = $request->get('service_id');
+        $sale_id    = $request->get('sale_id');
+        $rating_lable_id = $request->get('rating_lable_id');
+        $where = [];
+        $region = [];
+        if($region_id){
+            $region = Service::where('region_id',$region_id)->get(['id'])->toArray();
+        }
+        if($service_id){
+            $where['service_id'] = $service_id;
+        }
+        if($sale_id){
+            $where['sale_id'] = $sale_id;
+        }
+
+        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subDays(7)->toDateString();
+        $range_end = $request->get("range_end") ? $request->get("range_end") : Carbon::today()->toDateString();
+
+        $rating = RatingLabel::select('id')->where('pid', 0)->orderBy('id', 'asc')->get()->toArray();
+        $where['rating_lable_id'] = $rating_lable_id;
+        //带优化
+        $aa = Client::where($where)
+            ->whereDate("created_at", ">=", $range_start)
+            ->whereDate("created_at", "<=", $range_end)
+            ->where('old_rating_lable_id',$rating[0]['id'])
+            ->count();
+        $ab = Client::where($where)
+            ->whereDate("created_at", ">=", $range_start)
+            ->whereDate("created_at", "<=", $range_end)
+            ->where('old_rating_lable_id',$rating[1]['id'])
+            ->count();
+        $ac = Client::where($where)
+            ->whereDate("created_at", ">=", $range_start)
+            ->whereDate("created_at", "<=", $range_end)
+            ->where('old_rating_lable_id',$rating[2]['id'])
+            ->count();
+        $ad = Client::where($where)
+            ->whereDate("created_at", ">=", $range_start)
+            ->whereDate("created_at", "<=", $range_end)
+            ->where('old_rating_lable_id',$rating[3]['id'])
+            ->count();
+        $ae = Client::where($where)
+            ->whereDate("created_at", ">=", $range_start)
+            ->whereDate("created_at", "<=", $range_end)
+            ->where('old_rating_lable_id',$rating[4]['id'])
+            ->count();
+
+        $list = Sale::withCount(['client as one' => function ($query) use($range_start,$range_end,$rating,$rating_lable_id) {
+            $query->where("rating_lable_id",$rating_lable_id)->where("old_rating_lable_id", $rating[0]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);
+        }])->withCount(['client as two' => function ($query) use($range_start,$range_end,$rating,$rating_lable_id) {
+            $query->where("rating_lable_id",$rating_lable_id)->where("old_rating_lable_id", $rating[1]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);;
+        }])->withCount(['client as three' => function ($query) use($range_start,$range_end,$rating,$rating_lable_id) {
+            $query->where("rating_lable_id",$rating_lable_id)->where("old_rating_lable_id", $rating[2]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);;
+        }])->withCount(['client as four' => function ($query) use($range_start,$range_end,$rating,$rating_lable_id) {
+            $query->where("rating_lable_id",$rating_lable_id)->where("old_rating_lable_id", $rating[3]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);;
+        }])->withCount(['client as five' => function ($query) use($range_start,$range_end,$rating,$rating_lable_id) {
+            $query->where("rating_lable_id",$rating_lable_id)->where("old_rating_lable_id", $rating[4]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);;
+        }])->get()->toArray();
+    }
+
+
     /**客户阶段分布
      * @param Request $request
      */
@@ -404,6 +471,60 @@ class ReportController extends Controller
         }])->get()->toArray();
     }
 
+    public function firstup(Request $request){
+        $region_id  = $request->get('region_id');
+        $service_id = $request->get('service_id');
+        $sale_id    = $request->get('sale_id');
+
+        $where = [];
+        $region = [];
+        if($region_id){
+            $region = Service::where('region_id',$region_id)->get(['id'])->toArray();
+        }
+        if($service_id){
+            $where['service_id'] = $service_id;
+        }
+        if($sale_id){
+            $where['sale_id'] = $sale_id;
+        }
+
+        $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subDays(7)->toDateString();
+        $range_end = $request->get("range_end") ? $request->get("range_end") : Carbon::today()->toDateString();
+        $rating = RatingLabel::select('id')->where('pid', 0)->orderBy('id', 'asc')->get()->toArray();
+        $count = DB::raw("COUNT(DISTINCT(client_id)) as count");
+        $origin_data = Client::with(['lable as one ' => function($query) use ($range_start,$range_end,$rating){
+            $query->select('rating_lable_id', DB::raw('count(*) as total')) ->where('client_follow_ups.follow_type',ClientFollowUp::FOLLOW_TYPE_UP)->where("client_follow_ups.rating_lable_id", $rating[0]['id'])->where("client_follow_ups.is_first", 1)->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end)->GroupBy('rating_lable_id');
+        },'lable as two ' => function($query) use ($range_start,$range_end,$rating){
+            $query->select('rating_lable_id', DB::raw('count(*) as total')) ->where('client_follow_ups.follow_type',ClientFollowUp::FOLLOW_TYPE_UP)->where("client_follow_ups.rating_lable_id", $rating[1]['id'])->where("client_follow_ups.is_first", 1)->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end)->GroupBy('rating_lable_id');
+        },'lable as three ' => function($query) use ($range_start,$range_end,$rating){
+            $query->select('rating_lable_id', DB::raw('count(*) as total')) ->where('client_follow_ups.follow_type',ClientFollowUp::FOLLOW_TYPE_UP)->where("client_follow_ups.rating_lable_id", $rating[2]['id'])->where("client_follow_ups.is_first", 1)->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end)->GroupBy('rating_lable_id');
+        },'lable as four ' => function($query) use ($range_start,$range_end,$rating){
+            $query->select('rating_lable_id', DB::raw('count(*) as total')) ->where('client_follow_ups.follow_type',ClientFollowUp::FOLLOW_TYPE_UP)->where("client_follow_ups.rating_lable_id", $rating[3]['id'])->where("client_follow_ups.is_first", 1)->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end)->GroupBy('rating_lable_id');
+        }])
+        ->where($where)
+        ->whereDate("created_at", ">=", $range_start)
+        ->whereDate("created_at", "<=", $range_end)
+        ->groupBy('rating_lable_id')
+        ->get();
+
+        $new_data = [];
+        foreach ($origin_data as $item) {
+            $new_data[$item['stage_id']] += $item;
+        }
+        $stage = Stage::select('id')->orderBy('id', 'asc')->get()->toArray();
+        $list = Sale::withCount(['client as one' => function ($query) use($range_start,$range_end,$stage) {
+            $query->where("stage_id", $stage[0]['id'])->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);
+        }])->withCount(['client as two' => function ($query) use($range_start,$range_end,$stage) {
+            $query->where("stage_id", $stage[1]['id'])->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);;
+        }])->withCount(['client as three' => function ($query) use($range_start,$range_end,$stage) {
+            $query->where("stage_id", $stage[2]['id'])->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);;
+        }])->withCount(['client as four' => function ($query) use($range_start,$range_end,$stage) {
+            $query->where("stage_id", $stage[3]['id'])->whereDate("client_follow_ups.created_at", ">=", $range_start)->whereDate("client_follow_ups.created_at", "<=", $range_end);;
+        }])->get()->toArray();
+    }
+
+
+
     public function data(Request $request){
         $range_start = $request->get("range_start") ? $request->get("range_start") :Carbon::today()->subDays(7)->toDateString();
         $range_end = $request->get("range_end") ? $request->get("range_end") : Carbon::today()->toDateString();
@@ -418,4 +539,6 @@ class ReportController extends Controller
             $query->where("rating_lable_id", $rating_lable_id)->whereDate("clinets.created_at", ">=", $range_start)->whereDate("clinets.created_at", "<=", $range_end);;
         }]);
     }
+
+
 }
