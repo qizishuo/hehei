@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\NewEdit;
+namespace App\Http\Controllers\Crm\Admin;
 
 
 use App\Http\Controllers\Controller as BaseController;
@@ -17,8 +17,7 @@ class Controller extends BaseController
     {
 
         $id = $request->input('id');
-        $data = $this->model::findOrFail($id);
-        $data->delete();
+        $this->model::destroy($id);
 
         return $this->jsonSuccessData();
     }

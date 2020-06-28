@@ -369,6 +369,7 @@ class ReportController extends Controller
         $service_id = $request->get('service_id');
         $sale_id    = $request->get('sale_id');
         $rating_lable_id = $request->get('rating_lable_id');
+        $rating_lable_id = 1;
         $where = [];
         $region = [];
         if($region_id){
@@ -386,43 +387,45 @@ class ReportController extends Controller
 
         $rating = RatingLabel::select('id')->where('pid', 0)->orderBy('id', 'asc')->get()->toArray();
         $where['rating_lable_id'] = $rating_lable_id;
-        //带优化
+        //待优化
         $aa = Client::where($where)
             ->whereDate("created_at", ">=", $range_start)
             ->whereDate("created_at", "<=", $range_end)
-            ->where('old_rating_lable_id',$rating[0]['id'])
-            ->count();
+            ->where(function ($query) use($rating){
+                $query->where('last_rating_lable_id',$rating[0]['id'])->count();
+            })
+            ->get()->toArray();
         $ab = Client::where($where)
             ->whereDate("created_at", ">=", $range_start)
             ->whereDate("created_at", "<=", $range_end)
-            ->where('old_rating_lable_id',$rating[1]['id'])
+            ->where('last_rating_lable_id',$rating[1]['id'])
             ->count();
         $ac = Client::where($where)
             ->whereDate("created_at", ">=", $range_start)
             ->whereDate("created_at", "<=", $range_end)
-            ->where('old_rating_lable_id',$rating[2]['id'])
+            ->where('last_rating_lable_id',$rating[2]['id'])
             ->count();
         $ad = Client::where($where)
             ->whereDate("created_at", ">=", $range_start)
             ->whereDate("created_at", "<=", $range_end)
-            ->where('old_rating_lable_id',$rating[3]['id'])
+            ->where('last_rating_lable_id',$rating[3]['id'])
             ->count();
         $ae = Client::where($where)
             ->whereDate("created_at", ">=", $range_start)
             ->whereDate("created_at", "<=", $range_end)
-            ->where('old_rating_lable_id',$rating[4]['id'])
+            ->where('last_rating_lable_id',$rating[4]['id'])
             ->count();
-
+dd($aa);
         $list = Sale::withCount(['client as one' => function ($query) use($range_start,$range_end,$rating,$rating_lable_id) {
-            $query->where("rating_lable_id",$rating_lable_id)->where("old_rating_lable_id", $rating[0]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);
+            $query->where("rating_lable_id",$rating_lable_id)->where("last_rating_lable_id", $rating[0]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);
         }])->withCount(['client as two' => function ($query) use($range_start,$range_end,$rating,$rating_lable_id) {
-            $query->where("rating_lable_id",$rating_lable_id)->where("old_rating_lable_id", $rating[1]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);;
+            $query->where("rating_lable_id",$rating_lable_id)->where("last_rating_lable_id", $rating[1]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);;
         }])->withCount(['client as three' => function ($query) use($range_start,$range_end,$rating,$rating_lable_id) {
-            $query->where("rating_lable_id",$rating_lable_id)->where("old_rating_lable_id", $rating[2]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);;
+            $query->where("rating_lable_id",$rating_lable_id)->where("last_rating_lable_id", $rating[2]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);;
         }])->withCount(['client as four' => function ($query) use($range_start,$range_end,$rating,$rating_lable_id) {
-            $query->where("rating_lable_id",$rating_lable_id)->where("old_rating_lable_id", $rating[3]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);;
+            $query->where("rating_lable_id",$rating_lable_id)->where("last_rating_lable_id", $rating[3]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);;
         }])->withCount(['client as five' => function ($query) use($range_start,$range_end,$rating,$rating_lable_id) {
-            $query->where("rating_lable_id",$rating_lable_id)->where("old_rating_lable_id", $rating[4]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);;
+            $query->where("rating_lable_id",$rating_lable_id)->where("last_rating_lable_id", $rating[4]['id'])->whereDate("clients.created_at", ">=", $range_start)->whereDate("clients.created_at", "<=", $range_end);;
         }])->get()->toArray();
     }
 

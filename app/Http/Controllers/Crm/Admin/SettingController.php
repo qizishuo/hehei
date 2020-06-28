@@ -83,5 +83,18 @@ class SettingController extends Controller
         return $this->jsonSuccessData();
     }
 
+    public function label(Request $request){
+        $e = RatingLabel::where('level',"E")->first();
+        $id = $request->get('id') ? $request->get('id') : $e->id;
 
+        $list = RatingLabel::where('pid',$id)->get();
+        return $this->jsonSuccessData([
+            'data' => $list,
+            'id'   => $id
+        ]);
+    }
+
+    public function createLabel(Request $request){
+
+    }
 }

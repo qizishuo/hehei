@@ -7,9 +7,8 @@ use App\Entities\ClientFollowUp;
 use App\Entities\ClientFollowUpLog;
 use App\Entities\ClientFollowUpComment;
 use App\Entities\Stage;
-use App\Http\Controllers\Controller;
 use App\Entities\Client;
-use http\Env\Request;
+use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Entities\RatingLabel;
 
@@ -23,24 +22,30 @@ class ClientController extends  Controller
      * @param Request $request
      * @return false|string
      */
-    public function list(Request $request){
-
+    public function seaList(Request $request){
         $page_size = $request->get('page_size', 10);
-        $data = $this->model::where(function($query) use($request){
-            $data = $request->get();
-            if($data['initials']){
-                $query->where('initials',$data['initials']);
-            }
-            if($data['start_time']){
-                $query->whereDate('create_at','>=',$data['start_time']);
-            }
-            if($data['end_time']){
-                $query->whereDate('create_at','<',$data['end_time']);
-            }
-            if($data['sale_id']){
-                $query->where('sale_id',$data['sale_id']);
-            }
-        })->paginate($page_size);
+        $initials = $request->get('initials','');
+        $start_time = $request->get('start_time','');
+        $end_time = $request->get('end_time','');
+        $sale_id = $request->get('sale_id','');
+
+        $query =  $this->model::with(['sale','service'])->where(['sale_id' => 0,'service_id' => 0 ]);
+        if($initials){
+            $query->where('initials',$initials);
+        }
+        if($start_time){
+            $query->whereDate('create_at','>=',$start_time);
+        }
+        if($end_time){
+            $query->whereDate('create_at','<',$end_time);
+        }
+        if($sale_id){
+            $query->where('sale_id',$sale_id);
+        }
+
+        $data = $query->paginate($page_size);
+
+
         $data->appends(['page_size' => $page_size]);
 
         return $this->jsonSuccessData([
@@ -54,24 +59,31 @@ class ClientController extends  Controller
      */
     public function create(Request $request){
         $location_data = \cn\GB2260::getData();
-        $data = $request->validate([
+        $admin = $request->get('user');
+        $request->validate([
             "company_name" => "required",
+            "province"     => ["required", Rule::in(array_keys($location_data))],
             "location"     => ["required", Rule::in(array_keys($location_data))],
             "address"      => "required",
             "contacts"     => "required",
-            "phone"        => ["required","mobile"],
+            "phone"        => ["required",
+                                'regex:/^((13[0-9])|(14[5,7])|(15[0-3,5-9])|(17[0,3,5-8])|(18[0-9])|166|198|199|(147))\d{8}$/',
+                                'unique:clients'
+                              ],
             "gender"       => [Rule::in([Client::MALE_CODE,Client::FEMALE_CODE,Client::GENDER_NO])],
         ],[
             "company_name.required" => "公司名称不能为空",
+            "province.required"     => "请选择省份",
             "location.required"     => "请选择地址",
             "address.required"      => "请填写详细地址",
             "contacts.required"     => "请填写联系人",
             "phone.required"        => "请填写手机号",
-            "phone.mobile"          => "手机号格式错误"
-        ]);
 
+        ]);
+        $data = $request->all();
         $this->model::create([
             "company_name" => $data["company_name"],
+            "province"     => $data["province"],
             "location"     => $data["location"],
             "address"      => $data["address"],
             "contacts"     => $data["contacts"],
@@ -79,7 +91,9 @@ class ClientController extends  Controller
             "gender"       => $data["gender"],
             "industry"     => $data["industry"],
             "wechat_number"=> $data["wechat_number"],
-            "initials"     => $this->getFirstCharter($data["company_name"])
+            "initials"     => $this->getFirstCharter($data["company_name"]),
+            "created_by_type" => Client::TYPE_ADMIN,
+            "created_by"   => $admin->id
         ]);
 
         return $this->jsonSuccessData();
@@ -110,6 +124,7 @@ class ClientController extends  Controller
     public function import(Request $request)
     {
         $file = $request->file('excel')->path();
+        $type = $request->post('type');
         $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file);
         $sheet = $spreadsheet->getActiveSheet();
         $rows  = $sheet->getHighestRow();
@@ -119,53 +134,105 @@ class ClientController extends  Controller
         $location_data = \cn\GB2260::getData();
         for($i = 2; $i <= $rows; $i++) {
             $company_name = $sheet->getCell('A' . $i)->getValue();
-            $location     = $sheet->getCell('B' . $i)->getValue();
+            $province     = $sheet->getCell('B' . $i)->getValue();
+            $location     = $sheet->getCell('C' . $i)->getValue();
             $contacts     = $sheet->getCell('D' . $i)->getValue();
             $phone        = $sheet->getCell('E' . $i)->getValue();
             $industry     = $sheet->getCell('F' . $i)->getValue();
-            $happen_false = 0;
-            if(empty($company_name)){
-                $happen_false+=1;
-               $log[] = "第"+($i-1)+"行：【客户公司名称】字段不能为空";
-            }
-            if($this->model::where('company_name',$company_name)->find()){
-                $happen_false+=1;
-                $log[] = "第"+($i-1)+"行：已存在名称为【"+$company_name+"】的客户，如果继续导入将会更新这条客户的数据";
-            }
-            if(empty($location)){
-                $happen_false+=1;
-                $log[] = "第"+($i-1)+"行：【地址】字段不能为空";
-            }
-            if(!in_array($location,array_keys($location_data))){
-                $happen_false+=1;
-                $log[] = "第"+($i-1)+"行：【地址】不存在";
-            }
-            if(empty($contacts)){
-                $happen_false+=1;
-                $log[] = "第"+($i-1)+"行：【联系人】字段不能为空";
-            }
-            if(empty($phone)){
-                $happen_false+=1;
-                $log[] = "第"+($i-1)+"行：【电话号码】字段不能为空";
-            }
-            if(!preg_match("/^1[3456789]\d{9}$/",$phone)){
-                $log[] = "第"+($i-1)+"行：【电话号码】字段格式不正确";
-                $happen_false+=1;
-            }
-            if(empty($industry)){
-                $happen_false+=1;
-                $log[] = "第"+($i-1)+"行：【行业】字段不能为空";
-            }
-            $happen_false > 0?$true_num++:$false_num++;
-        }
-        return $this->jsonSuccessData([
-            'true_num'  => $true_num,
-            'false_num' => $false_num,
-            'log'       => $log
-        ]);
-        return redirect()->back();
-    }
+            if($type == 1) {
+                $happen_false = 0;
+                if (empty($company_name)) {
+                    $happen_false += 1;
+                    $log[] = "第" + ($i - 1) + "行：【客户公司名称】字段不能为空";
+                }
+                if ($this->model::where('company_name', $company_name)->first()) {
+                    $happen_false += 1;
+                    $log[] = "第" + ($i - 1) + "行：已存在名称为【" + $company_name + "】的客户，如果继续导入将会更新这条客户的数据";
+                }
+                if (empty($province)) {
+                    $happen_false += 1;
+                    $log[] = "第" + ($i - 1) + "行：【省份】字段不能为空";
+                }
+                if (empty($location)) {
+                    $happen_false += 1;
+                    $log[] = "第" + ($i - 1) + "行：【地址】字段不能为空";
+                }
 
+                if (empty($contacts)) {
+                    $happen_false += 1;
+                    $log[] = "第" + ($i - 1) + "行：【联系人】字段不能为空";
+                }
+                if (empty($phone)) {
+                    $happen_false += 1;
+                    $log[] = "第" + ($i - 1) + "行：【电话号码】字段不能为空";
+                }
+                if (!is_phone($phone)) {
+                    $log[] = "第" + ($i - 1) + "行：【电话号码】字段格式不正确";
+                    $happen_false += 1;
+                }
+                if (empty($industry)) {
+                    $happen_false += 1;
+                    $log[] = "第" + ($i - 1) + "行：【行业】字段不能为空";
+                }
+                $happen_false > 0 ? $true_num++ : $false_num++;
+            }else{
+                $data[] = [
+                    'company_name' => $company_name,
+                    'province' => $province,
+                    'location' => $location,
+                    'contacts' => $contacts,
+                    'phone' => $phone,
+                    'industry' => $industry,
+                ];
+            }
+
+        }
+        if($type == 1){
+            $data = [
+                'true_num'  => $true_num,
+                'false_num' => $false_num,
+                'log'       => $log
+            ];
+        }
+
+        return $this->jsonSuccessData([
+            'data' => $data
+        ]);
+
+    }
+    public function importData(Request $request){
+        $file = $request->file('excel')->path();
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file);
+        $sheet = $spreadsheet->getActiveSheet();
+        $rows  = $sheet->getHighestRow();
+        $true_num = 0;
+        $false_num = 0;
+        $log = [];
+        $location_data = \cn\GB2260::getData();
+        for($i = 2; $i <= $rows; $i++) {
+            $company_name = $sheet->getCell('A' . $i)->getValue();
+            $province     = $sheet->getCell('B' . $i)->getValue();
+            $location     = $sheet->getCell('C' . $i)->getValue();
+            $contacts     = $sheet->getCell('D' . $i)->getValue();
+            $phone        = $sheet->getCell('E' . $i)->getValue();
+            $industry     = $sheet->getCell('F' . $i)->getValue();
+
+            $data =  [
+                'company_name' => $company_name,
+                'province' => $province,
+                'location' => $location,
+                'contacts' => $contacts,
+                'phone' => $phone,
+                'industry' => $industry,
+            ];
+
+        }
+
+
+        return $this->jsonSuccessData([
+
+        ]);
+    }
 
     /**
      *

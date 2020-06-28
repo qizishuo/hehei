@@ -6,6 +6,18 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Yunpian\Sdk\YunpianClient;
 
+function searchArr($keyword){
+    $data = require '../data.php';
+    $arr = array();
+    foreach($data as $key=>$values ){
+        if (strstr( $values , $keyword ) !== false ){
+            array_push($arr, $values);
+        }
+    }
+    return $arr;
+}
+
+
 function location_name(string $code): string
 {
     try {
