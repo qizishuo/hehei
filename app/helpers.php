@@ -11,10 +11,10 @@ function searchArr($keyword){
     $arr = array();
     foreach($data as $key=>$values ){
         if (strstr( $values , $keyword ) !== false ){
-            array_push($arr, $values);
+            return  $key;
         }
     }
-    return $arr;
+
 }
 
 

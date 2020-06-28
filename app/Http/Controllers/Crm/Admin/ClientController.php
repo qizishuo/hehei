@@ -219,13 +219,13 @@ class ClientController extends  Controller
 
             $data =  [
                 'company_name' => $company_name,
-                'province' => $province,
-                'location' => $location,
+                'province' => searchArr($province),
+                'location' => searchArr($location),
                 'contacts' => $contacts,
                 'phone' => $phone,
                 'industry' => $industry,
             ];
-
+            Client::updateOrCreate($data,['company_name' => $company_name]);
         }
 
 
