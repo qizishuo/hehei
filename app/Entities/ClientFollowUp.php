@@ -18,13 +18,16 @@ class ClientFollowUp extends Model
 
 
     protected $fillable = [
+        "id",
         'follow_type',
         'client_id',
         'sale_id',
         'old_sale_id',
+        'admin_id',
+        'type'
     ];
 
-    public function setFOLLOWTYPEAttribute($value)
+    public function getFOLLOWTYPEAttribute($value)
     {
         switch ($value){
             case self::FOLLOW_TYPE_UP:

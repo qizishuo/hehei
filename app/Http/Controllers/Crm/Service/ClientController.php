@@ -30,7 +30,7 @@ class ClientController extends  Controller
         $end_time = $request->get('end_time','');
         $sale_id = $request->get('sale_id','');
 
-        $query =  $this->model::with(['sale','service'])->where('rating_label_id','!=',$this->rating_label['4']['id'])->where('sale_id',0);
+        $query =  $this->model::with(['sale','service'])->where('service_id',$this->service->id)->where('rating_label_id','!=',$this->rating_label['4']['id'])->where('sale_id',0);
 
         if($initials){
             $query->where('initials',$initials);
@@ -64,7 +64,7 @@ class ClientController extends  Controller
         $service_id = $request->get('service_id','');
         $sale_id = $request->get('sale_id','');
 
-        $query =  $this->model::with(['sale','service'])->where('rating_label_id','!=',$this->rating_label['4']['id'])->where('sale_id','>',0);
+        $query =  $this->model::with(['sale','service'])->where('service_id',$this->service->id)->where('rating_label_id','!=',$this->rating_label['4']['id'])->where('sale_id','>',0);
 
         if($initials){
             $query->where('initials',$initials);
@@ -150,25 +150,14 @@ class ClientController extends  Controller
      * @return false|string
      */
     public function changeRadio(Request $request){
-        $user = $request->get('user');
         $data = $request->validate([
              "ids"             => "required",
         ]);
 
-        $e = RatingLabel::where('level',"E")->first();
+        $e = RatingLabel::where('level',"E")->find();
 
-       $this->model::whereIn('id',$data['ids'])->update(['rating_label_id' => $e->id]);
-       $res = [
-           'follow_type' => ClientFollowUp::FOLLOW_TYPE_E,
-           'admin_id'     => $user->id,
-       ];
-
-        foreach ($data['ids'] as $item){
-            $res['client_id'] = $item;
-            $info = ClientFollowUp::create($res);
-            die;
-            $info->addRable($request->get('label_ids'));
-        }
+        $info = $this->model::whereIn('id',$data['ids'])->update(['rating_lable_id' => $e->id]);
+        $info->addRable($request->get('lable_ids'));
         return $this->jsonSuccessData();
     }
 

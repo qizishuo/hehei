@@ -10,8 +10,10 @@ use Illuminate\Http\Request;
 class Controller extends BaseController
 {
     public $rating_label;
+    public $service;
     public function __construct(Request $request)
     {
+        $this->service = $request->get('user');
         $this->rating_label = RatingLabel::where('pid',0)->orderBy('id','asc')->get()->toArray();
         parent::__construct($request);
     }

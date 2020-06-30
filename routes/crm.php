@@ -11,6 +11,7 @@ Route::prefix("admin")->group(function () {
         Route::prefix("client")->name("client.")->group(function () {
             Route::get("create", "Admin\\ClientController@create");
             Route::get("sea", "Admin\\ClientController@seaList");
+            Route::get("private", "Admin\\ClientController@privateList");
             Route::get("delete", "Admin\\ClientController@delete");
             Route::get("appeal","Admin\\ClientController@changeRadio");
             Route::post("import","Admin\\ClientController@import");
@@ -28,6 +29,8 @@ Route::prefix("admin")->group(function () {
             Route::post('lable','Admin\\SettingController@LabelManagement')->name("lable");
             Route::get('label_list','Admin\\SettingController@label');
             Route::get('rating_label','Admin\\SettingController@ratingLabels');
+            Route::get('stage','Admin\\SettingController@stage');
+            Route::get('create_label','Admin\\SettingController@createLabel');
 
         });
         Route::prefix("news")->name("news.")->group(function (){
@@ -40,7 +43,9 @@ Route::prefix("admin")->group(function () {
         });
 
         Route::prefix("service")->name("service.")->group(function(){
-            Route::get('/region','Admin\\ServiceController@region');
+            Route::get('/service','Admin\\ServiceController@service');
+            Route::get('/sale','Admin\\ServiceController@sale');
+
         });
     });
 

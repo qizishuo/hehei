@@ -89,22 +89,18 @@ class SettingController extends Controller
         if(!$name){
             return $this->jsonErrorData(0,'请填写标签名称');
         }
-        $id = RatingLabel::insertGetId([
+        RatingLabel::create([
             'pid' => $data->id,
             'name' => $name
         ]);
-        return $this->jsonSuccessData([
-            'id' => $id,
-            'name' => $name,
-            'checked' => false
-        ]);
+        return $this->jsonSuccessData();
     }
 
     public function label(Request $request){
         $e = RatingLabel::where('level',"E")->first();
         $id = $request->get('id') ? $request->get('id') : $e->id;
 
-        $list = RatingLabel::select('id','name')->where('pid',$id)->get();
+        $list = RatingLabel::where('pid',$id)->get();
         return $this->jsonSuccessData([
             'data' => $list,
             'id'   => $id

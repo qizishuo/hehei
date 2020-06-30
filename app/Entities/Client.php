@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Entities\ClientFollowUp;
 class Client extends Model
 {
+    use SoftDeletes;
     public const TYPE_ADMIN   = 1;
     public const TYPE_SERVICE = 2;
     public const TYPE_SALE    = 3;
@@ -74,6 +75,9 @@ class Client extends Model
     public function service(){
         return $this->hasOne(Service::class,'id','service_id');
     }
+    public function lastService(){
+        return $this->hasOne(Service::class,'id','last_service_id');
+    }
     public function rating(){
         return $this->hasOne(RatingLabel::class,'id','rating_label_id');
     }
@@ -85,8 +89,14 @@ class Client extends Model
 
     public function getCreatedByAttribute($value){
         if($this->created_by_type == self::TYPE_ADMIN){
-            return $this->hasOne(User::class,'id','created_by');
+            $admin = User::findOrFail($value);
+            return '管理员:'.$admin->name;
         }
+        if($this->created_by_type == self::TYPE_SERVICE){
+            $sale = User::findOrFail($value);
+            return '服务商:'.$sale->name;
+        }
+        return '无';
 //        $location = location_name($value);
 //        return strstr($location," ");
     }
