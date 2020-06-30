@@ -18,6 +18,7 @@ trait ResponseJson
             'msg' => $message,
             'data' => $data
         ];
+
         $content = json_encode($content, JSON_UNESCAPED_UNICODE);
         return response($content);
     }

@@ -2,6 +2,7 @@
 
 
 namespace App\Entities;
+use App\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -18,8 +19,8 @@ class Client extends Model
         'location',
         'address',
         'industry',
-        'rating_lable_id',
-        'last_rating_lable_id',
+        'rating_label_id',
+        'last_rating_label_id',
         'stages_id',
         'contacts',
         'wechat_number',
@@ -33,7 +34,8 @@ class Client extends Model
         'created_by_type',
         'is_lock',
         'is_visit',
-        'initials'
+        'initials',
+        'identifier'
     ];
 
 
@@ -72,6 +74,23 @@ class Client extends Model
     public function service(){
         return $this->hasOne(Service::class,'id','service_id');
     }
+    public function rating(){
+        return $this->hasOne(RatingLabel::class,'id','rating_label_id');
+    }
+    public function stage(){
+        return $this->hasOne(Stage::class,'id','stage_id');
+    }
+
+
+
+    public function getCreatedByAttribute($value){
+        if($this->created_by_type == self::TYPE_ADMIN){
+            return $this->hasOne(User::class,'id','created_by');
+        }
+//        $location = location_name($value);
+//        return strstr($location," ");
+    }
+
     public function getLocationAttribute($value){
         $location = location_name($value);
         return strstr($location," ");

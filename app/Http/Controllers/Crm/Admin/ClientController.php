@@ -1,6 +1,4 @@
 <?php
-
-
 namespace App\Http\Controllers\Crm\Admin;
 
 use App\Entities\ClientFollowUp;
@@ -45,9 +43,7 @@ class ClientController extends  Controller
 
         $data = $query->paginate($page_size);
 
-
         $data->appends(['page_size' => $page_size]);
-
         return $this->jsonSuccessData([
             'data' => $data
         ]);
@@ -93,7 +89,8 @@ class ClientController extends  Controller
             "wechat_number"=> $data["wechat_number"],
             "initials"     => $this->getFirstCharter($data["company_name"]),
             "created_by_type" => Client::TYPE_ADMIN,
-            "created_by"   => $admin->id
+            "created_by"   => $admin->id,
+            "identifier"   => "C".date(time(),'YmdHis')
         ]);
 
         return $this->jsonSuccessData();
@@ -123,66 +120,82 @@ class ClientController extends  Controller
      */
     public function import(Request $request)
     {
-        $file = $request->file('excel')->path();
+        $file = $request->file('excel');
+        if(!$file){
+            return  $this->jsonErrorData('0','请上传文件');
+        }
+        $file = $file->path();
         $type = $request->post('type');
         $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file);
         $sheet = $spreadsheet->getActiveSheet();
         $rows  = $sheet->getHighestRow();
-        $true_num = 0;
-        $false_num = 0;
-        $log = [];
+        $true_num = 0;  //验证通过条数
+        $false_num = 0; //验证错误条数
+        $num = 0;
+        $log = [];      //记录
         $location_data = \cn\GB2260::getData();
-        for($i = 2; $i <= $rows; $i++) {
+        for($i = 3; $i <= $rows; $i++) {
             $company_name = $sheet->getCell('A' . $i)->getValue();
             $province     = $sheet->getCell('B' . $i)->getValue();
             $location     = $sheet->getCell('C' . $i)->getValue();
-            $contacts     = $sheet->getCell('D' . $i)->getValue();
-            $phone        = $sheet->getCell('E' . $i)->getValue();
-            $industry     = $sheet->getCell('F' . $i)->getValue();
+            $address      = $sheet->getCell('D' . $i)->getValue();
+            $contacts     = $sheet->getCell('E' . $i)->getValue();
+            $phone        = $sheet->getCell('F' . $i)->getValue();
+            $gender       = $sheet->getCell('G' . $i)->getValue();
+            $industry     = $sheet->getCell('H' . $i)->getValue();
+            $wechat_number = $sheet->getCell('I' . $i)->getValue();
             if($type == 1) {
                 $happen_false = 0;
                 if (empty($company_name)) {
                     $happen_false += 1;
-                    $log[] = "第" + ($i - 1) + "行：【客户公司名称】字段不能为空";
+                    $log[] = "第{$i}行：【客户公司名称】字段不能为空";
                 }
                 if ($this->model::where('company_name', $company_name)->first()) {
                     $happen_false += 1;
-                    $log[] = "第" + ($i - 1) + "行：已存在名称为【" + $company_name + "】的客户，如果继续导入将会更新这条客户的数据";
+                    $num+=1;
+                    $log[] = "第{$i}行：已存在名称为【{$company_name}】的客户，如果继续导入将会更新这条客户的数据";
                 }
                 if (empty($province)) {
                     $happen_false += 1;
-                    $log[] = "第" + ($i - 1) + "行：【省份】字段不能为空";
+                    $log[] = "第{$i}行：【省份】字段不能为空";
                 }
                 if (empty($location)) {
                     $happen_false += 1;
-                    $log[] = "第" + ($i - 1) + "行：【地址】字段不能为空";
+                    $log[] = "第{$i}行：【地址】字段不能为空";
                 }
-
+                if(empty($address)){
+                    $happen_false += 1;
+                    $log[] = "第{$i}行：【地址】字段不能为空";
+                }
                 if (empty($contacts)) {
                     $happen_false += 1;
-                    $log[] = "第" + ($i - 1) + "行：【联系人】字段不能为空";
-                }
-                if (empty($phone)) {
-                    $happen_false += 1;
-                    $log[] = "第" + ($i - 1) + "行：【电话号码】字段不能为空";
+                    $log[] = "第{$i}行：【联系人】字段不能为空";
                 }
                 if (!is_phone($phone)) {
-                    $log[] = "第" + ($i - 1) + "行：【电话号码】字段格式不正确";
+                    $log[] = "第{$i}行：【电话号码】字段格式不正确";
                     $happen_false += 1;
+                }else{
+                    if ($this->model::where('phone', $phone)->first()) {
+                        $happen_false += 1;
+                        $log[] = "第{$i}行：已存在电话号码为【{$phone}】的客户";
+                    }
                 }
                 if (empty($industry)) {
                     $happen_false += 1;
-                    $log[] = "第" + ($i - 1) + "行：【行业】字段不能为空";
+                    $log[] = "第{$i}行：【行业】字段不能为空";
                 }
-                $happen_false > 0 ? $true_num++ : $false_num++;
+                $happen_false >= 1 ? $false_num++ : $true_num++;
             }else{
                 $data[] = [
                     'company_name' => $company_name,
                     'province' => $province,
                     'location' => $location,
+                    'address'  => $address,
                     'contacts' => $contacts,
                     'phone' => $phone,
+                    'gender' => $gender,
                     'industry' => $industry,
+                    'wechat_number' => $wechat_number
                 ];
             }
 
@@ -191,6 +204,7 @@ class ClientController extends  Controller
             $data = [
                 'true_num'  => $true_num,
                 'false_num' => $false_num,
+                'num'       => $num,
                 'log'       => $log
             ];
         }
@@ -201,6 +215,7 @@ class ClientController extends  Controller
 
     }
     public function importData(Request $request){
+        $admin = $request->get('user');
         $file = $request->file('excel')->path();
         $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file);
         $sheet = $spreadsheet->getActiveSheet();
@@ -209,23 +224,32 @@ class ClientController extends  Controller
         $false_num = 0;
         $log = [];
         $location_data = \cn\GB2260::getData();
-        for($i = 2; $i <= $rows; $i++) {
+        for($i = 3; $i <= $rows; $i++) {
             $company_name = $sheet->getCell('A' . $i)->getValue();
             $province     = $sheet->getCell('B' . $i)->getValue();
             $location     = $sheet->getCell('C' . $i)->getValue();
-            $contacts     = $sheet->getCell('D' . $i)->getValue();
-            $phone        = $sheet->getCell('E' . $i)->getValue();
-            $industry     = $sheet->getCell('F' . $i)->getValue();
+            $address      = $sheet->getCell('D' . $i)->getValue();
+            $contacts     = $sheet->getCell('E' . $i)->getValue();
+            $phone        = $sheet->getCell('F' . $i)->getValue();
+            $gender       = $sheet->getCell('G' . $i)->getValue();
+            $industry     = $sheet->getCell('H' . $i)->getValue();
+            $wechat_number = $sheet->getCell('I' . $i)->getValue();
 
             $data =  [
                 'company_name' => $company_name,
                 'province' => searchArr($province),
                 'location' => searchArr($location),
+                'address'  => $address,
                 'contacts' => $contacts,
                 'phone' => $phone,
+                'gender' => $gender == '女' ? 2 : 1,
                 'industry' => $industry,
+                'wechat_number' => $wechat_number,
+                "created_by_type" => Client::TYPE_ADMIN,
+                "created_by"   => $admin->id,
+                "identifier"   => "I".date('YmdHis')
             ];
-            Client::updateOrCreate($data,['company_name' => $company_name]);
+            Client::updateOrCreate(['company_name' => $company_name],$data);
         }
 
 
@@ -286,9 +310,9 @@ class ClientController extends  Controller
      */
     public function detail(Request $request){
         $id = $request->get('id');
-        $detail = $this->model::findOrFail($id);
+        $detail = $this->model::with('service','sale','rating','stage')->findOrFail($id);
 
-        $log = ClientFollowUp::where('client_id' ,$id)->select();
+        $log = ClientFollowUp::with(['log','money'])->where('client_id' ,$id)->select();
         return $this->jsonSuccessData([
             'detail' => $detail,
             'log'    => $log

@@ -94,7 +94,10 @@ class SettingController extends Controller
         ]);
     }
 
-    public function createLabel(Request $request){
-
+    public function ratingLabels(Request $request){
+        $list = RatingLabel::where('pid',0)->where('level','!=','E')->orderBy('id', 'asc')->get();
+        return $this->jsonSuccessData([
+            'data' => $list,
+        ]);
     }
 }

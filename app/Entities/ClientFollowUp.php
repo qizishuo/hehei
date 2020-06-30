@@ -13,7 +13,7 @@ class ClientFollowUp extends Model
     public const FOLLOW_TYPE_TO       = 3;
     public const FOLLOW_TYPE_COME     = 4;
     public const FOLLOW_TYPE_SIGN     = 5;
-
+    public const FOLLOW_TYPE_E        = 6;
     protected $with = ["log"];
 
 
@@ -37,6 +37,8 @@ class ClientFollowUp extends Model
                 return '归属';
             case self::FOLLOW_TYPE_SIGN:
                 return '签单';
+            case self::FOLLOW_TYPE_E:
+                return '申诉';
             default:
                 return '未知';
         }
@@ -49,7 +51,7 @@ class ClientFollowUp extends Model
      * 关联详情
      */
     public function log(){
-        return $this->hasMany(ClientFollowUpLog::class,'id','follow_up_id');
+        return $this->hasMany(ClientFollowUpLog::class,'follow_up_id','id');
     }
 
     public function rable(){

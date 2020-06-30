@@ -7,7 +7,7 @@ use Illuminate\Support\Str;
 use Yunpian\Sdk\YunpianClient;
 
 function searchArr($keyword){
-    $data = require '../data.php';
+    $data = require '../public/city.php';
     $arr = array();
     foreach($data as $key=>$values ){
         if (strstr( $values , $keyword ) !== false ){
@@ -38,7 +38,7 @@ function active_menu(string $route = '', string $text = 'active'): string
     return $active;
 }
 
-function is_phone(string $phone): bool
+function is_phone($phone): bool
 {
     if (preg_match("/^1[3456789]\d{9}$/", $phone)) {
         return true;
