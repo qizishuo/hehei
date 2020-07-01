@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Crm\Admin;
 
 use App\Entities\ChildAccount;
+use App\Entities\ClientClosing;
 use App\Entities\ClientFollowUp;
 use App\Entities\ClientFollowUpLog;
 use App\Entities\ClientFollowUpComment;
@@ -9,6 +10,7 @@ use App\Entities\Stage;
 use App\Entities\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use App\Entities\RatingLabel;
 
@@ -166,8 +168,7 @@ class ClientController extends  Controller
         foreach ($data['ids'] as $item){
             $res['client_id'] = $item;
             $info = ClientFollowUp::create($res);
-            die;
-            $info->addRable($request->get('label_ids'));
+            $info->addRabel($request->get('label_ids'));
         }
         return $this->jsonSuccessData();
     }
@@ -371,11 +372,17 @@ class ClientController extends  Controller
     public function detail(Request $request){
         $id = $request->get('id');
         $detail = $this->model::with('service','sale','rating','stage','lastService')->findOrFail($id);
+        $date_raw = DB::raw('*,DATE(created_at) as date');
+        $log = ClientFollowUp::select($date_raw)->with(['log','money'])->where('client_id' ,$id)->orderBy('created_at','desc')->get();
+        $data = [];
+        foreach ($log as $item) {
+            $data[$item["date"]][] = $item;
+        }
 
-        $log = ClientFollowUp::with(['log','money'])->where('client_id' ,$id)->select();
+
         return $this->jsonSuccessData([
             'detail' => $detail,
-            'log'    => $log
+            'log'    =>$data
         ]);
     }
 
@@ -384,32 +391,45 @@ class ClientController extends  Controller
      * @return false|string
      */
     public function followUp(Request $request){
-        $user = $request->get('user');
+        $admin = $request->get('user');
         $rabit =  RatingLabel::where('pid',0)->get()->toArray();
         $stage = Stage::orderBy('id', 'asc')->get()->toArray();
 
         $location_data = \cn\GB2260::getData();
 
         $data = $request->validate([
-            'rating_lable_id' => ["required",Rule::in(array_column($rabit,'id'))],
+            'rating_label_id' => ["required",Rule::in(array_column($rabit,'id'))],
             'stages_id'       => ["required",Rule::in(array_column($stage,'id'))],
             'exchang_at'      => "required",
-            'contacts'        => "required",
-            'location'        => ["required",Rule::in(array_keys($location_data))],
-            'industry'        => "required",
             'exchange_type'   => ["required",Rule::in([ClientFollowUpLog::EXCHANGE_TYPE_PHONE,ClientFollowUpLog::EXCHANGE_TYPE_VISIT])],
             'is_before_visit' => "required",
             'exchange_situation'        => "required",
             'exchange_plan'   => "required",
+            'client_id'       => "required"
         ]);
-
+        $user = Client::findOrFail($data['client_id']);
+        if($user->is_deal == 1){
+            return $this->jsonErrorData(0,'该用户已成交');
+        }
+        //添加跟进信息
         $info = ClientFollowUp::create([
             'follow_type' => ClientFollowUp::FOLLOW_TYPE_UP,
             'client_id'   => $data['client_id'],
-            'sale_id'     => $user['id'],
+            'sale_id'     => $user->id,
+            'service_id'  => $user->service_id,
+            'admin_id'    => $admin->id
         ]);
+        unset($data['client_id']);
+        //添加用户操作记录
         $info->addLog($data);
-        $info->addRable($request->get('lable_ids'));
+        //添加子标签
+
+        $info->addRabel($request->get('label_ids'));
+
+        //修改用户标签
+        $user->last_rating_label_id = $user->rating_label_id;
+        $user->rating_label_id = $data['rating_label_id'];
+        $user->save();
         return $this->jsonSuccessData();
     }
 
@@ -418,22 +438,28 @@ class ClientController extends  Controller
      * @return false|string
      */
     public function deal(Request $request){
-        $user = $request->get('user');
+        $admin = $request->get('user');
         $data = $request->validate([
             'closing_at' => "required",
             'closing_remarks' => "required",
             'closing_price' => "required",
+            'client_id'     => "required"
         ]);
-
-        $id = ClientFollowUp::insertGetId([
+        $user = Client::findOrFail($data['client_id']);
+        if($user->is_deal == 1){
+            return $this->jsonErrorData(0,'该用户已成交');
+        }
+        $info  = ClientFollowUp::create([
             'follow_type' => ClientFollowUp::FOLLOW_TYPE_SIGN,
             'client_id'   => $data['client_id'],
-            'sale_id'     => $user['id'],
+            'sale_id'     => $user->sale_id,
+            'service_id'  => $user->service_id,
+            'admin_id'    => $admin->id
         ]);
-        $data['follow_up_id'] = $id;
-        ClientFollowUpLog::create([
-            $data
-        ]);
+
+        $info->addClosing($data);
+        $user->is_deal = 1;
+        $user->save();
         return $this->jsonSuccessData();
     }
 

@@ -17,6 +17,9 @@ Route::prefix("admin")->group(function () {
             Route::post("import","Admin\\ClientController@import");
             Route::post("import_data","Admin\\ClientController@importData");
             Route::get("detail","Admin\\ClientController@detail");
+            Route::get("follow","Admin\\ClientController@followUp");
+            Route::get("deal","Admin\\ClientController@deal");
+
         });
         Route::prefix("information")->name("admin.")->group(function () {
             Route::post("/password", "Admin\\AdminInfoController@ChangePassword");

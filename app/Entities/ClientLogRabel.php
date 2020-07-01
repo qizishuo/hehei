@@ -4,7 +4,7 @@
 namespace App\Entities;
 
 
-class ClientLogRable extends Model
+class ClientLogRabel extends Model
 {
 
 

@@ -47,24 +47,24 @@ class ClientFollowUp extends Model
         }
     }
     public function money(){
-        return $this->hasMany(ClientClosing::class,'follow_up_id','id');
+        return $this->hasOne(ClientClosing::class,'follow_up_id','id');
     }
 
     /**
      * 关联详情
      */
     public function log(){
-        return $this->hasMany(ClientFollowUpLog::class,'follow_up_id','id');
+        return $this->hasOne(ClientFollowUpLog::class,'follow_up_id','id');
     }
 
-    public function rable(){
-        return $this->hasMany(ClientLogRable::class,'follow_up_id','id');
+    public function rabel(){
+        return $this->hasMany(ClientLogRabel::class,'follow_up_id','id');
     }
 
-    public function addRable(array $rable){
+    public function addRabel(array $rabel){
         $id = $this->id;
-        foreach ($rable as $item){
-            ClientLogRable::create([
+        foreach ($rabel as $item){
+            ClientLogRabel::create([
                 'log_id' => $id,
                 'rating_lable_id' => $item
             ]);
@@ -74,9 +74,14 @@ class ClientFollowUp extends Model
 
     public function addLog(array $data){
         $data['follow_up_id'] = $this->id;
+        ClientFollowUpLog::create($data);
+    }
 
-        ClientFollowUpLog::create([
+
+    public function addClosing(array $data){
+        $data['follow_up_id'] = $this->id;
+        ClientClosing::create(
             $data
-        ]);
+        );
     }
 }
