@@ -19,7 +19,7 @@ Route::prefix("admin")->group(function () {
             Route::get("detail","Admin\\ClientController@detail");
             Route::get("follow","Admin\\ClientController@followUp");
             Route::get("deal","Admin\\ClientController@deal");
-
+            Route::get("comment","Admin\\ClientController@comment");
         });
         Route::prefix("information")->name("admin.")->group(function () {
             Route::post("/password", "Admin\\AdminInfoController@ChangePassword");

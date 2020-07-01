@@ -12,32 +12,26 @@ class ClientFollowUpComment extends Model
 
 
     protected $fillable = [
-        'follow_up_log_id',
+        'follow_up_id',
         'commentator_type',
         'commentator_id',
         'commentator_content',
-        'contacts',
-        'location',
-        'Industry',
-        'exchange_type',
-        'is_before_visit',
-        'exchange_situation',
-        'exchange_plan',
+
     ];
 
     /**
      * @param $value
      */
-    public function setCommentatorTypeAttribute($value)
-    {
-        switch ($value){
-            case self::TYPE_ADMIN:
-                return $this->hasOne(ChildAccount::class,'id','commentator_id');
-            case self::TYPE_SERVICE:
-                return $this->hasOne(ChildAccount::class,'id','commentator_id');
-            case self::TYPE_SALE:
-                return $this->hasOne(ChildAccount::class,'id','commentator_id');
-        }
-    }
+//    public function setCommentatorTypeAttribute($value)
+//    {
+//        switch ($value){
+//            case self::TYPE_ADMIN:
+//                return $this->hasOne(ChildAccount::class,'id','commentator_id');
+//            case self::TYPE_SERVICE:
+//                return $this->hasOne(ChildAccount::class,'id','commentator_id');
+//            case self::TYPE_SALE:
+//                return $this->hasOne(ChildAccount::class,'id','commentator_id');
+//        }
+//    }
 
 }

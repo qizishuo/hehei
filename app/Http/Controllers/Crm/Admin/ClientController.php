@@ -373,16 +373,18 @@ class ClientController extends  Controller
         $id = $request->get('id');
         $detail = $this->model::with('service','sale','rating','stage','lastService')->findOrFail($id);
         $date_raw = DB::raw('*,DATE(created_at) as date');
-        $log = ClientFollowUp::select($date_raw)->with(['log','money'])->where('client_id' ,$id)->orderBy('created_at','desc')->get();
+        $log = ClientFollowUp::select($date_raw)->with(['log','money','comment'])->where('client_id' ,$id)->orderBy('created_at','desc')->get();
         $data = [];
-        foreach ($log as $item) {
+        foreach ($log as $k =>&$item) {
+            if($item['follow_type'] == 1){
+                $item['pinci'] = count($log)-$k;
+            }
             $data[$item["date"]][] = $item;
         }
 
-
         return $this->jsonSuccessData([
             'detail' => $detail,
-            'log'    =>$data
+            'log'    => $data
         ]);
     }
 
@@ -471,11 +473,12 @@ class ClientController extends  Controller
         ]);
 
         $data = [
-            'follow_up_log_id' => $data['id'],
+            'follow_up_id' => $data['id'],
             'commentator_type' => ClientFollowUpComment::TYPE_ADMIN,
-            'commentator_id'   => $user->id
+            'commentator_id'   => $user->id,
+            'commentator_content' => $data['commentator_content']
         ];
-
+        ClientFollowUpComment::create($data);
         return $this->jsonSuccessData();
     }
 
