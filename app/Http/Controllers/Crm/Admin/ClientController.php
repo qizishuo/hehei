@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use App\Entities\RatingLabel;
-use App\Entities\ClinetApply;
+use App\Entities\ClientApply;
 
 class ClientController extends  Controller
 {
@@ -176,7 +176,7 @@ class ClientController extends  Controller
         $start_time = $request->get('start_time','');
         $end_time = $request->get('end_time','');
 
-        $query = ClinetApply::with(['client']);
+        $query = ClientApply::with(['client']);
         if($start_time){
             $query->whereDate('create_at','>=',$start_time);
         }
@@ -201,11 +201,11 @@ class ClientController extends  Controller
     {
         $id = $request->get('id');
         $admin = $request->get('user');
-        $data = ClinetApply::with(["client"])->find($id);
-        $data->status = ClinetApply::STATUS_PASS;
+        $data = ClientApply::with(["client"])->find($id);
+        $data->status = ClientApply::STATUS_PASS;
         $data->client->last_rating_label_id = $data->client->rating_label_id;
         $data->client->rating_label_id = $this->rating_label['4']['id'];
-
+        $data->client->is_look = 1;
         $res = [
             'follow_type'  => ClientFollowUp::FOLLOW_TYPE_E,
             'admin_id'     => $admin->id,
@@ -231,10 +231,12 @@ class ClientController extends  Controller
     {
         $id = $request->get('id');
         $reason = $request->get("reason");
-        ClinetApply::where("id", $id)->update([
-            "status" => ClinetApply::STATUS_REFUSE,
-            "refuse_reason" => $reason,
-        ]);
+        $data = ClientApply::with(["client"])->find($id);
+        $data->status = ClinetApply::STATUS_REFUSE;
+        $data->refuse_reason = $reason;
+        $data->client->is_look = 1;
+        $data->push();
+
 
         return $this->jsonSuccessData();
     }
