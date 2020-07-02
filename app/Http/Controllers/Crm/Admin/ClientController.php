@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use App\Entities\RatingLabel;
-
+use App\Entities\ClinetApply;
 
 class ClientController extends  Controller
 {
@@ -56,6 +56,10 @@ class ClientController extends  Controller
         ]);
     }
 
+    /**私库客户
+     * @param Request $request
+     * @return false|string
+     */
     public function privateList(Request $request){
         $page_size = $request->get('page_size', 10);
 
@@ -75,7 +79,7 @@ class ClientController extends  Controller
             $query->where('location',$location);
         }
         if($service_id){
-            $query->where('service',$service_id);
+            $query->where('service_id',$service_id);
         }
         if($sale_id){
             $query->where('sale_id',$sale_id);
@@ -97,6 +101,143 @@ class ClientController extends  Controller
         ]);
     }
 
+    /**垃圾客户
+     * @param Request $request
+     * @return false|string
+     */
+    public function appealList(Request $request){
+        $page_size = $request->get('page_size', 10);
+
+        $initials = $request->get('initials','');
+        $start_time = $request->get('start_time','');
+        $end_time = $request->get('end_time','');
+        $location = $request->get('location','');
+        $service_id = $request->get('service_id','');
+        $sale_id = $request->get('sale_id','');
+
+        $query =  $this->model::with(['sale','service'])->where('rating_label_id',$this->rating_label['4']['id']);
+
+        if($initials){
+            $query->where('initials',$initials);
+        }
+        if($location){
+            $query->where('location',$location);
+        }
+        if($service_id){
+            $query->where('service_id',$service_id);
+        }
+        if($sale_id){
+            $query->where('sale_id',$sale_id);
+        }
+        if($start_time){
+            $query->whereDate('create_at','>=',$start_time);
+        }
+        if($end_time){
+            $query->whereDate('create_at','<',$end_time);
+        }
+
+
+        $data = $query->OrderBy('created_at','desc')->paginate($page_size);
+        $data->appends(['page_size' => $page_size]);
+
+
+        return $this->jsonSuccessData([
+            'data' => $data
+        ]);
+    }
+
+    public function intoSea(Request $request){
+        $ids = $request->get('ids');
+        $admin = $request->get('user');
+
+
+        $this->model::whereIn('id',$ids)->update(['rating_label_id' => '','sale_id' => '']);
+        $res = [
+            'follow_type' => ClientFollowUp::FOLLOW_TYPE_E,
+            'admin_id'     => $admin->id,
+        ];
+
+        foreach ($ids as $item){
+            $res['client_id'] = $item;
+            ClientFollowUp::create($res);
+        }
+
+        return $this->jsonSuccessData();
+    }
+
+
+    /**申诉客户
+     * @param Request $request
+     * @return false|string
+     */
+    public function applyList(Request $request){
+        $page_size = $request->get('page_size', 10);
+
+        $start_time = $request->get('start_time','');
+        $end_time = $request->get('end_time','');
+
+        $query = ClinetApply::with(['client']);
+        if($start_time){
+            $query->whereDate('create_at','>=',$start_time);
+        }
+        if($end_time){
+            $query->whereDate('create_at','<',$end_time);
+        }
+
+        $data = $query->OrderBy('created_at','desc')->paginate($page_size);
+        $data->appends(['page_size' => $page_size]);
+
+
+        return $this->jsonSuccessData([
+            'data' => $data
+        ]);
+    }
+
+    /**申诉客户 -- 通过
+     * @param Request $request
+     * @return false|string
+     */
+    public function adopt(Request $request)
+    {
+        $id = $request->get('id');
+        $admin = $request->get('user');
+        $data = ClinetApply::with(["client"])->find($id);
+        $data->status = ClinetApply::STATUS_PASS;
+        $data->client->last_rating_label_id = $data->client->rating_label_id;
+        $data->client->rating_label_id = $this->rating_label['4']['id'];
+
+        $res = [
+            'follow_type'  => ClientFollowUp::FOLLOW_TYPE_E,
+            'admin_id'     => $admin->id,
+            'client_id'    => $data->client->id,
+            'sale_id'      => $data->client->sale_id,
+            'service_id'      => $data->client->service_id,
+        ];
+        $info = ClientFollowUp::create($res);
+
+        if ($data->rabing_label_ids) {
+            $info->addRabel(explode($data->rabing_label_ids));
+        }
+        $data->push();
+
+        return $this->jsonSuccessData();
+    }
+
+    /**申诉客户 -- 拒绝
+     * @param Request $request
+     * @return false|string
+     */
+    public function refuse(Request $request)
+    {
+        $id = $request->get('id');
+        $reason = $request->get("reason");
+        ClinetApply::where("id", $id)->update([
+            "status" => ClinetApply::STATUS_REFUSE,
+            "refuse_reason" => $reason,
+        ]);
+
+        return $this->jsonSuccessData();
+    }
     /**导入
      * @param Request $request
      * @return false|string
@@ -136,7 +277,7 @@ class ClientController extends  Controller
                 "gender"       => $data["gender"],
                 "industry"     => $data["industry"],
                 "wechat_number"=> $data["wechat_number"],
-                "initials"     => $this->getFirstCharter($data["company_name"]),
+                "initials"     => getFirstCharter($data["company_name"]),
                 "created_by_type" => Client::TYPE_ADMIN,
                 "created_by"   => $admin->id,
                 "identifier"   => "C".date('YmdHis')
@@ -319,51 +460,7 @@ class ClientController extends  Controller
         ]);
     }
 
-    /**
-     *
-     *获取中文字符拼音首字母
-     *
-     * @param $str 中文字符
-     *
-     * @return null|string
-     *
-     */
-    function getFirstCharter($str)
-    {
-        if (empty($str)) {
-            return '';
-        }
-        $fchar = ord($str{0});
-        if ($fchar >= ord('A') && $fchar <= ord('z')) return strtoupper($str{0});
-        $s1 = iconv('UTF-8', 'gb2312', $str);
-        $s2 = iconv('gb2312', 'UTF-8', $s1);
-        $s = $s2 == $str ? $s1 : $str;
-        $asc = ord($s{0}) * 256 + ord($s{1}) - 65536;
-        if ($asc >= -20319 && $asc <= -20284) return 'A';
-        if ($asc >= -20283 && $asc <= -19776) return 'B';
-        if ($asc >= -19775 && $asc <= -19219) return 'C';
-        if ($asc >= -19218 && $asc <= -18711) return 'D';
-        if ($asc >= -18710 && $asc <= -18527) return 'E';
-        if ($asc >= -18526 && $asc <= -18240) return 'F';
-        if ($asc >= -18239 && $asc <= -17923) return 'G';
-        if ($asc >= -17922 && $asc <= -17418) return 'H';
-        if ($asc >= -17417 && $asc <= -16475) return 'J';
-        if ($asc >= -16474 && $asc <= -16213) return 'K';
-        if ($asc >= -16212 && $asc <= -15641) return 'L';
-        if ($asc >= -15640 && $asc <= -15166) return 'M';
-        if ($asc >= -15165 && $asc <= -14923) return 'N';
-        if ($asc >= -14922 && $asc <= -14915) return 'O';
-        if ($asc >= -14914 && $asc <= -14631) return 'P';
-        if ($asc >= -14630 && $asc <= -14150) return 'Q';
-        if ($asc >= -14149 && $asc <= -14091) return 'R';
-        if ($asc >= -14090 && $asc <= -13319) return 'S';
-        if ($asc >= -13318 && $asc <= -12839) return 'T';
-        if ($asc >= -12838 && $asc <= -12557) return 'W';
-        if ($asc >= -12556 && $asc <= -11848) return 'X';
-        if ($asc >= -11847 && $asc <= -11056) return 'Y';
-        if ($asc >= -11055 && $asc <= -10247) return 'Z';
-        return null;
-    }
+
 
     /** 客户详情
      * @param Request $request
@@ -431,6 +528,7 @@ class ClientController extends  Controller
         //修改用户标签
         $user->last_rating_label_id = $user->rating_label_id;
         $user->rating_label_id = $data['rating_label_id'];
+        $user->last_follow_at = date('Y-m-d');
         $user->save();
         return $this->jsonSuccessData();
     }

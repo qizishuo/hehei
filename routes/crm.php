@@ -20,6 +20,10 @@ Route::prefix("admin")->group(function () {
             Route::get("follow","Admin\\ClientController@followUp");
             Route::get("deal","Admin\\ClientController@deal");
             Route::get("comment","Admin\\ClientController@comment");
+            Route::get("appeal","Admin\\ClientController@appealList");
+            Route::get("into_sea","Admin\\ClientController@intoSea");
+
+
         });
         Route::prefix("information")->name("admin.")->group(function () {
             Route::post("/password", "Admin\\AdminInfoController@ChangePassword");
