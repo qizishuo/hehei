@@ -23,7 +23,8 @@ Route::prefix("admin")->group(function () {
             Route::get("appeal","Admin\\ClientController@appealList");
             Route::get("into_sea","Admin\\ClientController@intoSea");
             Route::get("apply_list","Admin\\ClientController@applyList");
-
+            Route::get("adopt","Admin\\ClientController@adopt");
+            Route::get("refuse","Admin\\ClientController@refuse");
         });
         Route::prefix("information")->name("admin.")->group(function () {
             Route::post("/password", "Admin\\AdminInfoController@ChangePassword");

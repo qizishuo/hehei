@@ -38,10 +38,10 @@ class ClientController extends  Controller
             $query->where('initials',$initials);
         }
         if($start_time){
-            $query->whereDate('create_at','>=',$start_time);
+            $query->whereDate('created_at','>=',$start_time);
         }
         if($end_time){
-            $query->whereDate('create_at','<',$end_time);
+            $query->whereDate('created_at','<',$end_time);
         }
         if($sale_id){
             $query->where('sale_id',$sale_id);
@@ -85,10 +85,10 @@ class ClientController extends  Controller
             $query->where('sale_id',$sale_id);
         }
         if($start_time){
-            $query->whereDate('create_at','>=',$start_time);
+            $query->whereDate('created_at','>=',$start_time);
         }
         if($end_time){
-            $query->whereDate('create_at','<',$end_time);
+            $query->whereDate('created_at','<',$end_time);
         }
 
 
@@ -130,10 +130,10 @@ class ClientController extends  Controller
             $query->where('sale_id',$sale_id);
         }
         if($start_time){
-            $query->whereDate('create_at','>=',$start_time);
+            $query->whereDate('created_at','>=',$start_time);
         }
         if($end_time){
-            $query->whereDate('create_at','<',$end_time);
+            $query->whereDate('created_at','<',$end_time);
         }
 
 
@@ -178,10 +178,10 @@ class ClientController extends  Controller
 
         $query = ClientApply::with(['client']);
         if($start_time){
-            $query->whereDate('create_at','>=',$start_time);
+            $query->whereDate('created_at','>=',$start_time);
         }
         if($end_time){
-            $query->whereDate('create_at','<',$end_time);
+            $query->whereDate('created_at','<',$end_time);
         }
 
         $data = $query->OrderBy('created_at','desc')->paginate($page_size);
@@ -199,26 +199,31 @@ class ClientController extends  Controller
      */
     public function adopt(Request $request)
     {
-        $id = $request->get('id');
+        $ids = $request->get('ids');
         $admin = $request->get('user');
-        $data = ClientApply::with(["client"])->find($id);
-        $data->status = ClientApply::STATUS_PASS;
-        $data->client->last_rating_label_id = $data->client->rating_label_id;
-        $data->client->rating_label_id = $this->rating_label['4']['id'];
-        $data->client->is_look = 1;
-        $res = [
-            'follow_type'  => ClientFollowUp::FOLLOW_TYPE_E,
-            'admin_id'     => $admin->id,
-            'client_id'    => $data->client->id,
-            'sale_id'      => $data->client->sale_id,
-            'service_id'      => $data->client->service_id,
-        ];
-        $info = ClientFollowUp::create($res);
+        if($ids){
+            foreach ($ids as $id){
+                $data = ClientApply::with(["client"])->find($id);
+                $data->status = ClientApply::STATUS_PASS;
+                $data->client->last_rating_label_id = $data->client->rating_label_id;
+                $data->client->rating_label_id = $this->rating_label['4']['id'];
+                $data->client->is_look = 1;
+                $res = [
+                    'follow_type'  => ClientFollowUp::FOLLOW_TYPE_E,
+                    'admin_id'     => $admin->id,
+                    'client_id'    => $data->client->id,
+                    'sale_id'      => $data->client->sale_id,
+                    'service_id'      => $data->client->service_id,
+                ];
+                $info = ClientFollowUp::create($res);
 
-        if ($data->rabing_label_ids) {
-            $info->addRabel(explode($data->rabing_label_ids));
+                if ($data->rabing_label_ids) {
+                    $info->addRabel(explode($data->rabing_label_ids));
+                }
+                $data->push();
+            }
         }
-        $data->push();
+
 
         return $this->jsonSuccessData();
     }
@@ -229,13 +234,17 @@ class ClientController extends  Controller
      */
     public function refuse(Request $request)
     {
-        $id = $request->get('id');
+        $ids = $request->get('ids');
         $reason = $request->get("reason");
-        $data = ClientApply::with(["client"])->find($id);
-        $data->status = ClinetApply::STATUS_REFUSE;
-        $data->refuse_reason = $reason;
-        $data->client->is_look = 1;
-        $data->push();
+        if($ids){
+            foreach ($ids as $id) {
+                $data = ClientApply::with(["client"])->find($id);
+                $data->status = ClinetApply::STATUS_REFUSE;
+                $data->refuse_reason = $reason;
+                $data->client->is_look = 1;
+                $data->push();
+            }
+        }
 
 
         return $this->jsonSuccessData();
