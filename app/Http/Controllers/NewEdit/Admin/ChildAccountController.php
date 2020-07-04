@@ -9,6 +9,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use App\Http\Controllers\NewEdit\Controller;
+use function foo\func;
+
 class ChildAccountController extends Controller
 {
     protected $model = ChildAccount::class;
@@ -16,9 +18,18 @@ class ChildAccountController extends Controller
     public function index(Request $request)
     {
         $page_size = $request->get('page_size', 10);
+        $province = $request->get('province');
+        $location = $request->get('location');
         $data = $this->model::withTrashed()->withCount(['phones as phones_daily_count' => function ($query) {
             $query->whereDate("created_at", Carbon::today()->toDateString());
-        }])->withCount('phones')->paginate($page_size);
+        }])->where(function($query) use($province,$location){
+            if($province){
+                $query->whereIn('location',$province);
+            }
+            if($location){
+                $query->where('location',$location);
+            }
+        })->withCount('phones')->paginate($page_size);
         $data->appends(['page_size' => $page_size]);
 
         return  $this->jsonSuccessData([
@@ -38,6 +49,7 @@ class ChildAccountController extends Controller
             "name" => ["required", "unique:child_accounts"],
             "password" => ["required"],
             "type" => ["required", Rule::in([ChildAccount::TYPE_THIRD, ChildAccount::TYPE_PLATFORM])],
+            "province" => ["required", Rule::in(array_keys($location_data))],
             "location" => ["required", Rule::in(array_keys($location_data))],
             "weight" => ["nullable", "numeric"],
         ]);
@@ -46,6 +58,7 @@ class ChildAccountController extends Controller
             "name" => $data["name"],
             "password" => $data["password"],
             "type" => $data["type"],
+            "province" => $data["province"],
             "location" => $data["location"],
             "weight" => $data["weight"] ?? ChildAccount::DEFAULT_WEIGHT,
         ]);
@@ -110,10 +123,10 @@ class ChildAccountController extends Controller
         $user = $request->get('user');
         $recharge = $request->post("recharge");
         $price = $request->post("price");
-        $comment = $request->post("comment", "{$user->name}后台充值");
         $data = $this->model::sharedLock()->findOrFail($id);
 
         if ($recharge) {
+            $comment = $request->post("comment", "{$user->name}后台充值");
             $data->amount += $recharge;
             Money::create([
                 "child_account_id" => $id,

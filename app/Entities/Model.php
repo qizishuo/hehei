@@ -14,14 +14,6 @@ use Illuminate\Support\Facades\Request;
  */
 class Model extends BaseModel
 {
-    /**
-     * 性别
-     */
-    public const MALE_CODE   = 1;
-    public const FEMALE_CODE = 2;
-    public const GENDER_NO   = 0;
-
-
     public function __construct(array $attributes = [])
     {
         parent::__construct($attributes);
@@ -34,7 +26,7 @@ class Model extends BaseModel
         parent::boot();
 
         static::addGlobalScope('order', function (Builder $builder) {
-            $builder->orderByDesc((new static)->getTable().".updated_at")->orderByDesc((new static)->getTable().".id");
+            $builder->orderByDesc("updated_at")->orderByDesc("id");
         });
     }
 }

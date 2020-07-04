@@ -35,9 +35,9 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function map()
     {
-        $this->mapApiRoutes();
-
         $this->mapNewRoutes();
+        
+        $this->mapApiRoutes();
 
         $this->mapWebRoutes();
 
@@ -87,7 +87,7 @@ class RouteServiceProvider extends ServiceProvider
 
     protected function mapCrmRoutes()
     {
-        Route::prefix('crm')
+        Route::prefix('api')
              ->middleware('api')
              ->namespace($this->namespace . "\Crm")
              ->group(base_path('routes/crm.php'));
@@ -98,6 +98,6 @@ class RouteServiceProvider extends ServiceProvider
         Route::prefix('new')
             ->middleware('api')
             ->namespace($this->namespace . "\NewEdit")
-            ->group(base_path('routes/new_web.php'));
+            ->group(base_path('routes/web_new.php'));
     }
 }

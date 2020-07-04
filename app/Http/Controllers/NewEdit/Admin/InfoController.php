@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\NewEdit\Admin;
-header('Access-Control-Allow-Origin: http://clue.gongsihezhun.com');
+
 use App\Entities\ChildAccount;
 use App\Entities\Info;
 use App\Exports\InfoExport;
@@ -81,11 +81,12 @@ class InfoController extends Controller
             'from' => 'required|date',
             'to' => 'required|date|after_or_equal:from',
         ]);
-
+       header('Access-Control-Allow-Origin: http://clue.gongsihezhun.com');
         return Excel::download(
             new InfoExport($data['from'], $data['to']),
             "apply.{$data['from']}--{$data['to']}.xlsx"
         );
+
 
     }
 }

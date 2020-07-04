@@ -23,4 +23,11 @@ Route::namespace("Api")->group(function () {
     Route::get('/popups', 'PopupController@index');
 
     Route::post("/wechat/send", "WechatController@send");
+
+
+    Route::get("wxapp/{code}", function ($code){
+        $app = app('wechat.mini_program');
+        return $app->auth->session( $code);
+    });
+
 });

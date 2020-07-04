@@ -1,6 +1,5 @@
 <?php
 namespace App\Http\Middleware;
-use App\Entities\Service;
 use Closure;
 use App\Http\Response\ResponseJson;
 use App\Services\TokenService;
@@ -20,6 +19,7 @@ class WebAuth
     public function handle($request, Closure $next)
     {
 
+
         switch ($request->route()->getAction()['namespace']){
             case 'App\Http\Controllers\NewEdit\Admin':
                 $model = new User();
@@ -32,10 +32,6 @@ class WebAuth
             case 'App\Http\Controllers\Crm':
                 $model = new User();
                 $redis_type = 'admin';
-                break;
-            case 'App\Http\Controllers\Crm\Service':
-                $model = new Service();
-                $redis_type = 'service';
                 break;
             default:
 

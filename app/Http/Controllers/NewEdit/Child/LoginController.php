@@ -13,6 +13,7 @@ class LoginController extends Controller
     public function login(Request $request)
     {
         $auth = $request->header("Authorization");
+        $openid = $request->post('openid');
         if(empty($auth)){
             abort(401, "缺失必要参数：Authorization");
         }
@@ -23,8 +24,10 @@ class LoginController extends Controller
         if (empty($user) || !$user->verifyPassword($password)) {
             abort(401, "登陆失败，用户名密码错误");
         }
-
-
+        if($openid){
+            $user->wxapp_openid = $openid;
+            $user->save();
+        }
         $token_service = new TokenService("child");
         $token = $token_service->write($user->id);
 

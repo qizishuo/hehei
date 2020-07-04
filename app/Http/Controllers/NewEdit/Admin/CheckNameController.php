@@ -19,7 +19,13 @@ class CheckNameController extends Controller
         ]);
     }
 
-   
+    public function delete(Request $request,int $id=0)
+    {
+        $id = $request->input('id');
+        Popup::destroy($id);
+
+        return $this->jsonSuccessData();
+    }
 
     public function import(Request $request)
     {

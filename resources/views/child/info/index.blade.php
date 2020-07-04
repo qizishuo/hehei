@@ -46,6 +46,7 @@
                             <th class="table_arr">类型</th>
                             <th class="table_arr">公司名称或老板姓名</th>
                             <th class="table_arr">电话</th>
+                            <th class="table_arr">行业</th>
                             <th class="table_arr">提交时间</th>
                             <th style="width:180px">操作</th>
                         </tr>
@@ -61,7 +62,9 @@
                                 <!--公司名称-->
                                 <td>{{ $item->phone_number }}</td>
                                 <!--电话-->
+                                <td>{{ $item->industry?$item->industry:'无' }}</td>
                                 <td>{{ $item->created_at }}</td>
+
                                 <!--提交时间-->
                                 <td>
                                     <!--操作-->

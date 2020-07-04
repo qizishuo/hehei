@@ -94,6 +94,10 @@ class ChildAccount extends Model implements
         return $this->hasMany(Apply::class);
     }
 
+    public function getLocationAttribute($value){
+        return location_name($value);
+    }
+
     public function getSumAmountAttribute(): string
     {
         return $this->money()->whereIn(
